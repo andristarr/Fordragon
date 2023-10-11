@@ -8,7 +8,6 @@ fn main() {
         Err(_) => PathBuf::from("target"),
     };
 
-
     let source_path = Path::new("src\\server.json");
 
     let target_path = target_dir.join("debug").join("server.json");

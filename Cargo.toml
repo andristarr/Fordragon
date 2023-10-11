@@ -10,7 +10,7 @@ path = "src/cli.rs"
 
 [[bin]]
 name = "server"
-path = "src/main.rs"
+path = "src/server_runner.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,3 +22,5 @@ serde = { version = "1.0.188", features = ["derive"] }
 mongodb = "2.6.1"
 async-trait = { version = "0.1.73", features = [] }
 futures = "0.3.28"
+crossbeam = "0.8.2"
+crossbeam-queue = "0.3.8"

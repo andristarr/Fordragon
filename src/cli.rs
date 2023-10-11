@@ -45,13 +45,14 @@ async fn main() {
 
                     let db = DatabaseHandler::new(&config.db_uri).await.unwrap().connect_database(&config.db_name).await.connect_collection("items").unwrap();
 
-                    db.remove::<Item>(item_name).await;
+                    match db.remove::<Item>(item_name).await {
+                        Err(err) => {println!("Error occured removing: {:?}", err)}
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
         }
         _ => {}
     }
-    
-    println!("{:?}", args);
 }

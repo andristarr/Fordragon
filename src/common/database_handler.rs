@@ -84,3 +84,7 @@ impl DatabaseHandler {
         }
     }
 }
+
+pub struct ItemDatabaseHandler {
+    dh: DatabaseHandler
+}

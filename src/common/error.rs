@@ -1,10 +1,11 @@
-
 #[derive(Debug)]
 pub enum Error {
     InvalidArguments(String),
     DatabaseError(DatabaseError),
     ParsingError(String),
-    FileError(String)
+    FileError(String),
+    AddressParsingError(String),
+    RuntimeError(String)
 }
 
 #[derive(Debug)]
@@ -27,6 +28,12 @@ impl From<serde_json::Error> for Error {
 
 impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
-        Error::ParsingError(value.to_string())
+        Error::FileError(value.to_string())
+    }
+}
+
+impl From<std::net::AddrParseError> for Error {
+    fn from(value: std::net::AddrParseError) -> Self {
+        Error::AddressParsingError(value.to_string())
     }
 }

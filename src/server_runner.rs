@@ -7,8 +7,4 @@ mod common;
 mod server;
 
 #[tokio::main]
-async fn main() {
-    let mut dispatcher = Dispatcher::new(2);
-
-    dispatcher.run(dispatcher.state);
-}
+async fn main() {}

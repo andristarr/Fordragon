@@ -1,17 +1,13 @@
-use crate::server::consumer::Consumer;
-use crate::server::packet::Packet;
+use super::consumer::Consumer;
+use super::packet::Packet;
 use std::cmp::Ordering;
-use std::sync::{Arc, Mutex};
-use tokio::task::JoinHandle;
 
-pub struct PacketHandler {
-    pub job: Option<JoinHandle<()>>,
-    pub packets: Vec<Packet>,
-}
+pub struct PacketHandler {}
 
 impl PacketHandler {
     pub fn consume(&self, packet: Packet) {
-        todo!()
+        // async tokio handler
+        println!("I am handling packet: {:?}", packet);
     }
 
     pub fn send(&self, packet: Packet, consumer: Consumer) {
@@ -22,21 +18,8 @@ impl PacketHandler {
         todo!()
     }
 
-    pub fn new() -> PacketHandler {
-        let packets = Vec::new();
-
-        let shared = Arc::new(Mutex::new(&packets));
-
-        let job: JoinHandle<()> = tokio::spawn(async move {
-            loop {
-                let qwe = shared.lock().unwrap();
-            }
-        });
-
-        PacketHandler {
-            job: Some(job),
-            packets,
-        }
+    pub fn new() -> Self {
+        PacketHandler {}
     }
 }
 

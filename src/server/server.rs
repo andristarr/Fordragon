@@ -1,16 +1,18 @@
+use crate::common::config::Config;
+use crate::common::error::Error;
+use crate::server::dispatcher::Dispatcher;
+use crate::server::packet::Packet;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use crate::common::config::Config;
 use tokio::{net::UdpSocket, sync::mpsc};
-use crate::common::error::Error;
 
-pub struct Server {
-
-}
+pub struct Server {}
 
 impl Server {
     async fn run(config: Config) -> Result<(), Error> {
-        let sock = UdpSocket::bind("0.0.0.0:8080".parse::<SocketAddr>()?).await?;
+        let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;
+
+        let mut dispatcher = Dispatcher::new(4);
 
         let r = Arc::new(sock);
         let s = r.clone();
@@ -28,7 +30,13 @@ impl Server {
         loop {
             let (len, addr) = r.recv_from(&mut buf).await?;
             println!("{:?} bytes received from {:?}", len, addr);
-            tx.send((buf[..len].to_vec(), addr)).await.unwrap();
+
+            let packet =
+                serde_json::from_str::<Packet>(std::str::from_utf8(&buf).unwrap()).unwrap();
+
+            println!("Received: {:?}", packet);
+
+            dispatcher.enqueue(packet);
         }
     }
 }

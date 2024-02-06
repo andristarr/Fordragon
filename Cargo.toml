@@ -9,8 +9,8 @@ name = "fcli"
 path = "src/cli.rs"
 
 [[bin]]
-name = "server"
-path = "src/server_runner.rs"
+name = "runner"
+path = "src/runner.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,3 +24,4 @@ async-trait = { version = "0.1.73", features = [] }
 futures = "0.3.28"
 crossbeam = "0.8.2"
 crossbeam-queue = "0.3.8"
+bevy_ecs = "0.12.1"

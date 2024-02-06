@@ -5,5 +5,5 @@ pub enum OpCode {
     Movement,
     Auth,
     Existence,
-    Spawn
+    Spawn,
 }

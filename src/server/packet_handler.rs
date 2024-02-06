@@ -5,11 +5,6 @@ use std::cmp::Ordering;
 pub struct PacketHandler {}
 
 impl PacketHandler {
-    pub fn consume(&self, packet: Packet) {
-        // async tokio handler
-        println!("I am handling packet: {:?}", packet);
-    }
-
     pub fn send(&self, packet: Packet, consumer: Consumer) {
         todo!()
     }

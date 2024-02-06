@@ -5,13 +5,13 @@ pub enum Error {
     ParsingError(String),
     FileError(String),
     AddressParsingError(String),
-    RuntimeError(String)
+    RuntimeError(String),
 }
 
 #[derive(Debug)]
 pub enum DatabaseError {
     Generic(String),
-    ExistingItem(String)
+    ExistingItem(String),
 }
 
 impl From<mongodb::error::Error> for Error {

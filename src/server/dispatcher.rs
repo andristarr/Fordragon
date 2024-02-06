@@ -1,4 +1,4 @@
-use super::packet::Packet;
+
 use super::packet_handler::PacketHandler;
 
 pub struct Dispatcher {
@@ -18,11 +18,5 @@ impl Dispatcher {
             thread_count: threads,
             handlers,
         }
-    }
-
-    pub fn enqueue(&mut self, packet: Packet) {
-        let current = self.handlers.iter().min().unwrap();
-
-        current.consume(packet);
     }
 }

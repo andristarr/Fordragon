@@ -1,18 +1,21 @@
 mod common;
 
-use std::env;
 use serde_json::from_str;
+use std::env;
 
-use common::model::{Item};
-use common::database_handler::DatabaseHandler;
 use common::config::Config;
+use common::database_handler::DatabaseHandler;
 use common::error::Error;
+use common::model::Item;
 
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let command = args.get(1).ok_or(Error::InvalidArguments("No command received".to_string())).unwrap();
+    let command = args
+        .get(1)
+        .ok_or(Error::InvalidArguments("No command received".to_string()))
+        .unwrap();
 
     let config = Config::get().unwrap();
 
@@ -26,16 +29,24 @@ async fn main() {
 
                     let item = from_str::<Item>(item).expect("Item cannot be parsed");
 
-                    let db = DatabaseHandler::new(&config.db_uri).await.unwrap().connect_database(&config.db_name).await.connect_collection("items").unwrap();
+                    let db = DatabaseHandler::new(&config.db_uri)
+                        .await
+                        .unwrap()
+                        .connect_database(&config.db_name)
+                        .await
+                        .connect_collection("items")
+                        .unwrap();
 
                     match db.add(item).await {
-                        Err(err) => {println!("Error occured adding: {:?}", err)},
+                        Err(err) => {
+                            println!("Error occured adding: {:?}", err)
+                        }
                         _ => {}
                     }
                 }
                 _ => {}
             }
-        },
+        }
         "remove" => {
             let removed_type = args.get(2).expect("No type received");
 
@@ -43,10 +54,18 @@ async fn main() {
                 "item" => {
                     let item_name = args.get(3).expect("No item name received");
 
-                    let db = DatabaseHandler::new(&config.db_uri).await.unwrap().connect_database(&config.db_name).await.connect_collection("items").unwrap();
+                    let db = DatabaseHandler::new(&config.db_uri)
+                        .await
+                        .unwrap()
+                        .connect_database(&config.db_name)
+                        .await
+                        .connect_collection("items")
+                        .unwrap();
 
                     match db.remove::<Item>(item_name).await {
-                        Err(err) => {println!("Error occured removing: {:?}", err)}
+                        Err(err) => {
+                            println!("Error occured removing: {:?}", err)
+                        }
                         _ => {}
                     }
                 }

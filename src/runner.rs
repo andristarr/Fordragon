@@ -6,5 +6,5 @@ use server::server::Server;
 
 #[tokio::main]
 async fn main() {
-    let _ = Server::run(Config::get().unwrap()).await;
+    let _ = Server::run().await;
 }

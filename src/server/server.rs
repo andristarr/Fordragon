@@ -8,22 +8,24 @@ use tokio::{net::UdpSocket, sync::mpsc};
 
 use super::{
     dispatcher::Dispatcher,
-    state_handler::{self, StateHandler},
+    state_handler::{StateHandler},
 };
 
 pub struct Server {}
 
 impl Server {
     pub async fn run() -> Result<(), Error> {
-        let config = Config::get()?;
+        let _config = Config::get()?;
 
         let mut state_handler = StateHandler::new();
+
+        state_handler.run();
 
         let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;
 
         let receiver = Arc::new(sock);
         let sender = receiver.clone();
-        let (tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
+        let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
         tokio::spawn(async move {
             while let Some((bytes, addr)) = rx.recv().await {

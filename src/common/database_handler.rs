@@ -56,7 +56,7 @@ impl DatabaseHandler {
         &self,
         item: T,
     ) -> Result<InsertOneResult, Error> {
-        if item.validate_add(&self) == true {
+        if item.validate_add(self) {
             return Err(Error::DatabaseError(DatabaseError::ExistingItem(format!(
                 "Item already exists: {:?}",
                 item
@@ -74,7 +74,7 @@ impl DatabaseHandler {
             .await?)
     }
 
-    pub async fn remove<T: Serialize>(&self, name: &str) -> Result<DeleteResult, Error> {
+    pub async fn remove(&self, name: &str) -> Result<DeleteResult, Error> {
         let filter = doc! { "name": name };
 
         let collection = self.collection.as_ref().ok_or_else(|| {
@@ -100,14 +100,14 @@ impl DatabaseHandler {
 
         let doc = collection.find_one(filter, None).await?;
 
-        return match doc {
+        match doc {
             None => Ok(None),
             Some(doc) => {
                 let doc = from_document::<T>(doc).unwrap();
 
                 Ok(Some(doc))
             }
-        };
+        }
     }
 }
 

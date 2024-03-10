@@ -12,5 +12,5 @@ fn main() {
 
     let target_path = target_dir.join("debug").join("server.json");
 
-    fs::copy(&source_path, &target_path).expect("Failed to copy server.json");
+    fs::copy(source_path, target_path).expect("Failed to copy server.json");
 }

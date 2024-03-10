@@ -10,7 +10,7 @@ pub trait Validateable<T> {
 
 impl Validateable<Item> for Item {
     fn uuid(&self) -> String {
-        (&self.uuid).to_string()
+        self.uuid.to_string()
     }
 
     fn validate_add(&self, dh: &DatabaseHandler) -> bool {

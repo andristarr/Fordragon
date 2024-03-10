@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 pub struct PacketHandler {}
 
 impl PacketHandler {
-    pub fn send(&self, packet: Packet, consumer: Consumer) {
+    pub fn send(&self, _packet: Packet, _consumer: Consumer) {
         todo!()
     }
 
@@ -28,20 +28,27 @@ impl PartialEq<Self> for PacketHandler {
 
 impl PartialOrd<Self> for PacketHandler {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.get_queue_size().cmp(&other.get_queue_size()))
+        Some({
+            self.get_queue_size();
+            ().cmp(&other.get_queue_size())
+        })
     }
 }
 
 impl Ord for PacketHandler {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.get_queue_size().cmp(&other.get_queue_size())
+        self.get_queue_size();
+        ().cmp(&other.get_queue_size())
     }
 
     fn max(self, other: Self) -> Self
     where
         Self: Sized,
     {
-        match self.get_queue_size().cmp(&other.get_queue_size()) {
+        let res = {
+            self.get_queue_size();
+            ().cmp(&other.get_queue_size())
+        }; match res {
             Ordering::Greater => self,
             _ => other,
         }
@@ -51,7 +58,10 @@ impl Ord for PacketHandler {
     where
         Self: Sized,
     {
-        match self.get_queue_size().cmp(&other.get_queue_size()) {
+        let res = {
+            self.get_queue_size();
+            ().cmp(&other.get_queue_size())
+        }; match res {
             Ordering::Less => self,
             _ => other,
         }

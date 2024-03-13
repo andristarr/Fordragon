@@ -1,8 +1,9 @@
 use bevy_ecs::component::Component;
 
+use crate::common::model::Vec3d;
+
 #[derive(Component)]
-pub struct Vec3d {
-    x: f64,
-    y: f64,
-    z: f64
+pub struct Position {
+    pub position: Vec3d
 }
+

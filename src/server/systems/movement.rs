@@ -1,16 +1,19 @@
-use bevy_ecs::system::{Query, Res};
+use bevy_ecs::{entity::Entity, query::With, system::{Query, Res, ResMut}};
 
-use crate::server::components::{guid::Guid, position::Vec3d};
+use crate::server::components::position::Position;
 
 use super::command_container::CommandContainer;
 
-pub fn movement_system(guids: Query<&Guid>, movement_commands: Res<CommandContainer<Vec3d>>) {
-    for guid in &guids {
-        let commands = movement_commands.entries.get(&guid.guid);
-
-        if let Some(commands) = commands {
-            for command in commands {
-                
+pub fn movement_system(mut query: Query<(Entity, &mut Position), With<Position>>, mut movement_commands: ResMut<CommandContainer<Position>>) {
+    for (entity, mut position) in query.iter_mut() {
+        if let Some(commands) = movement_commands.entries.get_mut(&entity) {
+            loop {
+                if let Some(command) = commands.pop_front()
+                {
+                    position.position.x += command.position.x;
+                    position.position.y += command.position.y;
+                    position.position.z += command.position.z;
+                }
             }
         }
     }

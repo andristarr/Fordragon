@@ -1,5 +1,7 @@
 # Fordragon
 
+### Currently under heavy refactoring, expect main to not work out of the box.
+
 A naive implementation of an MMO backend and its tooling eco-system.
 
 ## Components
@@ -9,7 +11,7 @@ _Being added based on where development is currently_
 - Runner
 
   - The actual server
-  - Implementation is aimed to be 8 TICK for now
+  - Implementation is aimed to be 8 TICK for now (this will result in a delay of 125 ms + network)
   - Has the following opcodes:
     - Movement, Auth, Existence, Spawn
   - The server consumes these packets on multiple threads and then updates its internal state based on that

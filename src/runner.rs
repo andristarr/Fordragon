@@ -1,7 +1,6 @@
 mod common;
 mod server;
 
-
 use server::server::Server;
 
 #[tokio::main]

@@ -1,9 +1,7 @@
-pub mod consumer;
-pub mod dispatcher;
+pub mod components;
 pub mod opcode;
-pub mod packet;
 pub mod packet_handler;
+pub mod packets;
 pub mod server;
 pub mod state_handler;
 pub mod systems;
-pub mod components;

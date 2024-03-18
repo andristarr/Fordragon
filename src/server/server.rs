@@ -1,14 +1,14 @@
 use crate::{
     common::{config::Config, error::Error},
-    server::packet::Packet,
+    server::packets::packet::Packet,
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
 use super::{
-    dispatcher::Dispatcher,
-    state_handler::{StateHandler},
+    packet_handler::{self, PacketHandler},
+    state_handler::StateHandler,
 };
 
 pub struct Server {}
@@ -28,6 +28,7 @@ impl Server {
         let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
         tokio::spawn(async move {
+            // sender
             while let Some((bytes, addr)) = rx.recv().await {
                 let len = sender.send_to(&bytes, &addr).await.unwrap();
                 println!("{:?} bytes sent", len);
@@ -36,7 +37,10 @@ impl Server {
 
         let mut buf = [0; 1024];
 
+        let packet_handler = PacketHandler::new(&state_handler);
+
         loop {
+            // receiver
             let (len, addr) = receiver.recv_from(&mut buf).await?;
             println!("{:?} bytes received from {:?}", len, addr);
 
@@ -45,7 +49,7 @@ impl Server {
 
             println!("Received: {:?}", packet);
 
-            Dispatcher::consume(packet);
+            packet_handler.consume(packet);
         }
     }
 }

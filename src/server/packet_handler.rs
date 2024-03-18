@@ -1,83 +1,49 @@
-use super::consumer::Consumer;
-use super::packet::Packet;
-use std::cmp::Ordering;
+use std::collections::VecDeque;
+use std::str::FromStr;
 
-pub struct PacketHandler {}
+use super::components::shared::vec3d::Vec3d;
+use super::packets::move_packet::MovePacket;
+use super::packets::packet::Packet;
+use super::state_handler::StateHandler;
+use super::systems::command_container::CommandContainer;
 
-impl PacketHandler {
-    pub fn send(&self, _packet: Packet, _consumer: Consumer) {
-        todo!()
-    }
-
-    pub fn get_queue_size(&self) {
-        todo!()
-    }
-
-    pub fn new() -> Self {
-        PacketHandler {}
-    }
+pub struct PacketHandler<'a> {
+    state_handler: &'a StateHandler,
 }
 
-impl Eq for PacketHandler {}
-
-impl PartialEq<Self> for PacketHandler {
-    fn eq(&self, other: &Self) -> bool {
-        self.get_queue_size() == other.get_queue_size()
-    }
-}
-
-impl PartialOrd<Self> for PacketHandler {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some({
-            self.get_queue_size();
-            ().cmp(&other.get_queue_size())
-        })
-    }
-}
-
-impl Ord for PacketHandler {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.get_queue_size();
-        ().cmp(&other.get_queue_size())
+impl<'a> PacketHandler<'a> {
+    pub fn new(state_handler: &'a StateHandler) -> PacketHandler<'a> {
+        PacketHandler { state_handler }
     }
 
-    fn max(self, other: Self) -> Self
-    where
-        Self: Sized,
-    {
-        let res = {
-            self.get_queue_size();
-            ().cmp(&other.get_queue_size())
-        }; match res {
-            Ordering::Greater => self,
-            _ => other,
-        }
-    }
+    pub fn consume(&self, packet: Packet) {
+        match packet.opcode {
+            super::opcode::OpCode::Movement => {
+                // ideally this will be extracted
+                let world = self.state_handler.get_world();
 
-    fn min(self, other: Self) -> Self
-    where
-        Self: Sized,
-    {
-        let res = {
-            self.get_queue_size();
-            ().cmp(&other.get_queue_size())
-        }; match res {
-            Ordering::Less => self,
-            _ => other,
-        }
-    }
+                // TODO probably an incredibly huge bottleneck
 
-    fn clamp(self, min: Self, max: Self) -> Self
-    where
-        Self: Sized,
-        Self: PartialOrd,
-    {
-        if self < min {
-            min
-        } else if self > max {
-            max
-        } else {
-            self
+                let mut world = world.lock().unwrap();
+
+                let mut res = world.resource_mut::<CommandContainer<Vec3d>>();
+
+                let packet_data = MovePacket::from_str(&packet.data).unwrap();
+
+                match res.entries.get_mut(&packet_data.entity) {
+                    Some(queue) => {
+                        queue.push_back(packet_data.vector);
+                    }
+                    None => {
+                        let mut queue: VecDeque<Vec3d> = VecDeque::new();
+
+                        queue.push_back(packet_data.vector);
+                    }
+                }
+            }
+            super::opcode::OpCode::Auth => todo!(),
+            super::opcode::OpCode::Existence => todo!(),
+            super::opcode::OpCode::Spawn => todo!(),
         }
     }
 }

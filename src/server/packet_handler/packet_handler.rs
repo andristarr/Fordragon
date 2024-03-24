@@ -1,24 +1,24 @@
+use crate::server::components::shared::vec3d::Vec3d;
+use crate::server::opcode::OpCode;
+use crate::server::packets::move_packet::MovePacket;
+use crate::server::packets::packet::Packet;
+use crate::server::state_handler::state_handler::StateHandler;
+use crate::server::systems::command_container::CommandContainer;
 use std::collections::VecDeque;
 use std::str::FromStr;
 
-use super::components::shared::vec3d::Vec3d;
-use super::packets::move_packet::MovePacket;
-use super::packets::packet::Packet;
-use super::state_handler::StateHandler;
-use super::systems::command_container::CommandContainer;
-
-pub struct PacketHandler<'a> {
-    state_handler: &'a StateHandler,
+pub trait PacketHandler {
+    fn consume(&self, packet: Packet);
 }
 
-impl<'a> PacketHandler<'a> {
-    pub fn new(state_handler: &'a StateHandler) -> PacketHandler<'a> {
-        PacketHandler { state_handler }
-    }
+pub struct ServerPacketHandler {
+    pub(super) state_handler: Box<dyn StateHandler>,
+}
 
-    pub fn consume(&self, packet: Packet) {
+impl PacketHandler for ServerPacketHandler {
+    fn consume(&self, packet: Packet) {
         match packet.opcode {
-            super::opcode::OpCode::Movement => {
+            OpCode::Movement => {
                 // ideally this will be extracted
                 let world = self.state_handler.get_world();
 
@@ -41,9 +41,9 @@ impl<'a> PacketHandler<'a> {
                     }
                 }
             }
-            super::opcode::OpCode::Auth => todo!(),
-            super::opcode::OpCode::Existence => todo!(),
-            super::opcode::OpCode::Spawn => todo!(),
+            OpCode::Auth => todo!(),
+            OpCode::Existence => todo!(),
+            OpCode::Spawn => todo!(),
         }
     }
 }

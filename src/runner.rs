@@ -1,9 +1,12 @@
 mod common;
 mod server;
 
-use server::server::Server;
-
 #[tokio::main]
 async fn main() {
-    let _ = Server::run().await;
+    // local dependency injection for now...
+
+    // let state_handler = StateHandler::new();
+    // let server = Server::new();
+
+    // let _ = Server::run().await;
 }

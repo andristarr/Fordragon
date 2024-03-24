@@ -1,3 +1,4 @@
+use crate::server::packet_handler::packet_handler::PacketHandler;
 use crate::{
     common::{config::Config, error::Error},
     server::packets::packet::Packet,
@@ -6,20 +7,25 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
-use super::{
-    packet_handler::{self, PacketHandler},
-    state_handler::StateHandler,
-};
+use super::state_handler::state_handler::StateHandler;
 
-pub struct Server {}
+pub struct Server {
+    state_handler: Box<dyn StateHandler>,
+    packet_handler: Box<dyn PacketHandler>,
+}
 
 impl Server {
-    pub async fn run() -> Result<(), Error> {
+    pub fn new(state_handler: impl StateHandler, packet_handler: impl PacketHandler) -> Self {
+        Server {
+            state_handler: Box::new(state_handler),
+            packet_handler: Box::new(packet_handler),
+        }
+    }
+
+    pub async fn run(&mut self) -> Result<(), Error> {
         let _config = Config::get()?;
 
-        let mut state_handler = StateHandler::new();
-
-        state_handler.run();
+        self.state_handler.run();
 
         let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;
 
@@ -37,8 +43,6 @@ impl Server {
 
         let mut buf = [0; 1024];
 
-        let packet_handler = PacketHandler::new(&state_handler);
-
         loop {
             // receiver
             let (len, addr) = receiver.recv_from(&mut buf).await?;
@@ -49,7 +53,7 @@ impl Server {
 
             println!("Received: {:?}", packet);
 
-            packet_handler.consume(packet);
+            self.packet_handler.consume(packet);
         }
     }
 }

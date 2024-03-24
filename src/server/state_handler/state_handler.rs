@@ -2,24 +2,21 @@ use bevy_ecs::{schedule::Schedule, world::World};
 use std::sync::{Arc, Mutex};
 use tokio::task::JoinHandle;
 
-use super::systems;
+use crate::server::systems;
 
-pub struct StateHandler {
-    world: Arc<Mutex<World>>,
-    schedule: Arc<Mutex<Schedule>>,
-    handle: Option<JoinHandle<()>>,
+pub trait StateHandler {
+    fn run(&mut self);
+    fn get_world(&self) -> Arc<Mutex<World>>;
 }
 
-impl StateHandler {
-    pub fn new() -> StateHandler {
-        StateHandler {
-            world: Arc::new(Mutex::new(World::default())),
-            schedule: Arc::new(Mutex::new(Schedule::default())),
-            handle: None,
-        }
-    }
+pub struct ServerStateHandler {
+    pub(super) world: Arc<Mutex<World>>,
+    pub(super) schedule: Arc<Mutex<Schedule>>,
+    pub(super) handle: Option<JoinHandle<()>>,
+}
 
-    pub fn run(&mut self) {
+impl StateHandler for ServerStateHandler {
+    fn run(&mut self) {
         let world = self.world.clone();
         let schedule = self.schedule.clone();
 
@@ -40,7 +37,7 @@ impl StateHandler {
         self.handle = Some(handle);
     }
 
-    pub fn get_world(&self) -> Arc<Mutex<World>> {
+    fn get_world(&self) -> Arc<Mutex<World>> {
         self.world.clone()
     }
 }

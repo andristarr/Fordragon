@@ -9,23 +9,17 @@ use tokio::{net::UdpSocket, sync::mpsc};
 
 use super::state_handler::state_handler::StateHandler;
 
-pub struct Server {
-    state_handler: Box<dyn StateHandler>,
-    packet_handler: Box<dyn PacketHandler>,
+pub struct Server<'a> {
+    packet_handler: Box<dyn PacketHandler + 'a>,
 }
 
-impl Server {
-    pub fn new(state_handler: impl StateHandler, packet_handler: impl PacketHandler) -> Self {
-        Server {
-            state_handler: Box::new(state_handler),
-            packet_handler: Box::new(packet_handler),
-        }
+impl<'a> Server<'a> {
+    pub fn new(packet_handler: Box<dyn PacketHandler + 'a>) -> Self {
+        Server { packet_handler }
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
         let _config = Config::get()?;
-
-        self.state_handler.run();
 
         let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;
 

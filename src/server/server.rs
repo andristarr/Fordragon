@@ -7,15 +7,17 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
-use super::state_handler::state_handler::StateHandler;
-
 pub struct Server<'a> {
     packet_handler: Box<dyn PacketHandler + 'a>,
 }
 
 impl<'a> Server<'a> {
-    pub fn new(packet_handler: Box<dyn PacketHandler + 'a>) -> Self {
-        Server { packet_handler }
+    pub fn new(mut packet_handler: Box<dyn PacketHandler + 'a>) -> Self {
+        packet_handler.initialise();
+
+        Server {
+            packet_handler
+        }
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {

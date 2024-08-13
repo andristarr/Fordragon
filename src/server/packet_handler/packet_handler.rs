@@ -9,10 +9,19 @@ use std::str::FromStr;
 
 pub trait PacketHandler {
     fn consume(&self, packet: Packet);
+    fn initialise(&mut self);
 }
 
 pub struct ServerPacketHandler {
-    pub(super) state_handler: Box<dyn StateHandler>,
+    pub(super) state_handler: Box<dyn StateHandler>
+}
+
+impl ServerPacketHandler {
+    pub fn new(state_handler: Box<dyn StateHandler>) -> Self {
+        ServerPacketHandler {
+            state_handler
+        }
+    }
 }
 
 impl PacketHandler for ServerPacketHandler {
@@ -45,5 +54,9 @@ impl PacketHandler for ServerPacketHandler {
             OpCode::Existence => todo!(),
             OpCode::Spawn => todo!(),
         }
+    }
+    
+    fn initialise(&mut self) {
+        self.state_handler.run();
     }
 }

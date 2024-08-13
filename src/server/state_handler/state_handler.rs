@@ -15,6 +15,16 @@ pub struct ServerStateHandler {
     pub(super) handle: Option<JoinHandle<()>>,
 }
 
+impl ServerStateHandler {
+    pub fn new() -> Self {
+        ServerStateHandler {
+            world: Arc::new(Mutex::new(World::default())),
+            schedule: Arc::new(Mutex::new(Schedule::default())),
+            handle: None,
+        }
+    }
+}
+
 impl StateHandler for ServerStateHandler {
     fn run(&mut self) {
         let world = self.world.clone();

@@ -1,12 +1,9 @@
 mod common;
 
-use serde_json::from_str;
 use std::env;
 
 use common::config::Config;
-use common::database_handler::DatabaseHandler;
 use common::error::Error;
-use common::model::Item;
 
 #[tokio::main]
 async fn main() {

@@ -4,29 +4,31 @@ use tokio::task::JoinHandle;
 
 use crate::server::systems;
 
+use super::ticker::TickerTrait;
+
 pub trait StateHandler {
-    fn run(&mut self);
+    fn start(&mut self);
     fn get_world(&self) -> Arc<Mutex<World>>;
 }
 
 pub struct ServerStateHandler {
     pub(super) world: Arc<Mutex<World>>,
     pub(super) schedule: Arc<Mutex<Schedule>>,
-    pub(super) handle: Option<JoinHandle<()>>,
+    pub(super) ticker: Arc<Mutex<dyn TickerTrait>>,
 }
 
 impl ServerStateHandler {
-    pub fn new() -> Self {
+    pub fn new(ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
         ServerStateHandler {
             world: Arc::new(Mutex::new(World::default())),
             schedule: Arc::new(Mutex::new(Schedule::default())),
-            handle: None,
+            ticker,
         }
     }
 }
 
 impl StateHandler for ServerStateHandler {
-    fn run(&mut self) {
+    fn start(&mut self) {
         let world = self.world.clone();
         let schedule = self.schedule.clone();
 
@@ -36,15 +38,13 @@ impl StateHandler for ServerStateHandler {
             .unwrap()
             .add_systems(systems::movement::movement_system);
 
-        let handle = tokio::spawn(async move {
-            loop {
-                let mut world = world.lock().unwrap();
-                let mut schedule = schedule.lock().unwrap();
-                schedule.run(&mut world);
-            }
-        });
+        self.ticker.lock().unwrap().register(Box::new(move || {
+            let mut world = world.lock().unwrap();
+            let mut schedule = schedule.lock().unwrap();
+            schedule.run(&mut world);
+        }));
 
-        self.handle = Some(handle);
+        self.ticker.lock().unwrap().run();
     }
 
     fn get_world(&self) -> Arc<Mutex<World>> {

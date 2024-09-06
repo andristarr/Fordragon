@@ -15,9 +15,7 @@ impl<'a> Server<'a> {
     pub fn new(mut packet_handler: Box<dyn PacketHandler + 'a>) -> Self {
         packet_handler.initialise();
 
-        Server {
-            packet_handler
-        }
+        Server { packet_handler }
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {

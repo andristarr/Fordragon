@@ -1,4 +1,4 @@
-use crate::server::state_handler::state_handler::StateHandler;
+use crate::server::state::state_handler::StateHandler;
 
 use super::packet_handler::{PacketHandler, ServerPacketHandler};
 

@@ -2,7 +2,7 @@ use crate::server::components::shared::vec3d::Vec3d;
 use crate::server::opcode::OpCode;
 use crate::server::packets::move_packet::MovePacket;
 use crate::server::packets::packet::Packet;
-use crate::server::state_handler::state_handler::StateHandler;
+use crate::server::state::state_handler::StateHandler;
 use crate::server::systems::command_container::CommandContainer;
 use std::collections::VecDeque;
 use std::str::FromStr;
@@ -13,14 +13,12 @@ pub trait PacketHandler {
 }
 
 pub struct ServerPacketHandler {
-    pub(super) state_handler: Box<dyn StateHandler>
+    pub(super) state_handler: Box<dyn StateHandler>,
 }
 
 impl ServerPacketHandler {
     pub fn new(state_handler: Box<dyn StateHandler>) -> Self {
-        ServerPacketHandler {
-            state_handler
-        }
+        ServerPacketHandler { state_handler }
     }
 }
 
@@ -47,6 +45,8 @@ impl PacketHandler for ServerPacketHandler {
                         let mut queue: VecDeque<Vec3d> = VecDeque::new();
 
                         queue.push_back(packet_data.vector);
+
+                        res.entries.insert(packet_data.entity, queue);
                     }
                 }
             }
@@ -55,8 +55,8 @@ impl PacketHandler for ServerPacketHandler {
             OpCode::Spawn => todo!(),
         }
     }
-    
+
     fn initialise(&mut self) {
-        self.state_handler.run();
+        self.state_handler.start();
     }
 }

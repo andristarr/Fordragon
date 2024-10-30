@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use bevy_ecs::{schedule::Schedule, world::World};
 use server::{
-    packet_handler::packet_handler::ServerPacketHandler,
+    packet_handler::{builder::ServerPacketHandlerBuilder, packet_handler::ServerPacketHandler},
     server::Server,
     state::{
         state_handler::{ServerStateHandler, StateHandler},
@@ -21,7 +21,7 @@ async fn main() {
 
     let state_handler = ServerStateHandler::new(Arc::new(Mutex::new(ticker)));
 
-    let packet_handler = ServerPacketHandler::new(Box::new(state_handler));
+    let packet_handler = ServerPacketHandlerBuilder::build(state_handler);
 
     let mut server = Server::new(Box::new(packet_handler));
 

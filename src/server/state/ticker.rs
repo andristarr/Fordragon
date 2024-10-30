@@ -3,21 +3,21 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use tokio::sync::Semaphore;
+use semaphore::Semaphore;
 
 pub trait TickerTrait {
-    fn register(&mut self, callback: Box<dyn Fn() + Send + Sync>);
+    fn register(&mut self, callback: Box<dyn Fn() -> () + Send>);
     fn run(&mut self);
 }
 
 pub struct Ticker {
     tick_count: u8,
-    semaphore: Semaphore,
+    semaphore: Semaphore<bool>,
     state: Arc<Mutex<TickerState>>,
 }
 
 pub struct TickerState {
-    callbacks: Vec<Box<dyn Fn() + Send + Sync>>,
+    callbacks: Vec<Box<dyn Fn() -> () + Send>>,
     running: bool,
 }
 
@@ -25,7 +25,7 @@ impl Ticker {
     pub fn new(tick_count: u8) -> Ticker {
         Ticker {
             tick_count,
-            semaphore: Semaphore::new(1),
+            semaphore: Semaphore::new(1, false),
             state: Arc::new(Mutex::new(TickerState {
                 callbacks: vec![],
                 running: false,
@@ -35,7 +35,7 @@ impl Ticker {
 }
 
 impl TickerTrait for Ticker {
-    fn register(&mut self, callback: Box<dyn Fn() + Send + Sync>) {
+    fn register(&mut self, callback: Box<dyn Fn() -> () + Send>) {
         self.state.lock().unwrap().callbacks.push(callback);
     }
 
@@ -48,7 +48,9 @@ impl TickerTrait for Ticker {
 
         let mut state = self.state.lock().unwrap();
 
-        // semaphore should be synced here
+        if self.semaphore.try_access().is_err() {
+            return;
+        }
 
         if !state.running {
             state.running = true;

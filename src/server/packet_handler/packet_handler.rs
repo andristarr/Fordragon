@@ -12,17 +12,17 @@ pub trait PacketHandler {
     fn initialise(&mut self);
 }
 
-pub struct ServerPacketHandler {
-    pub(super) state_handler: Box<dyn StateHandler>,
+pub struct ServerPacketHandler<T: StateHandler> {
+    pub(super) state_handler: T,
 }
 
-impl ServerPacketHandler {
-    pub fn new(state_handler: Box<dyn StateHandler>) -> Self {
+impl<T: StateHandler> ServerPacketHandler<T> {
+    pub fn new(state_handler: T) -> Self {
         ServerPacketHandler { state_handler }
     }
 }
 
-impl PacketHandler for ServerPacketHandler {
+impl<T: StateHandler> PacketHandler for ServerPacketHandler<T> {
     fn consume(&self, packet: Packet) {
         match packet.opcode {
             OpCode::Movement => {

@@ -1,15 +1,11 @@
 use crate::server::state::state_handler::StateHandler;
 
-use super::packet_handler::{PacketHandler, ServerPacketHandler};
-
-pub trait PacketHandlerBuilder {
-    fn build(&self, state_handler: Box<dyn StateHandler>) -> impl PacketHandler;
-}
+use super::packet_handler::ServerPacketHandler;
 
 pub struct ServerPacketHandlerBuilder;
 
-impl PacketHandlerBuilder for ServerPacketHandlerBuilder {
-    fn build(&self, state_handler: Box<dyn StateHandler>) -> impl PacketHandler {
-        ServerPacketHandler { state_handler }
+impl ServerPacketHandlerBuilder {
+    pub fn build<T: StateHandler>(state_handler: T) -> ServerPacketHandler<T> {
+        ServerPacketHandler::new(state_handler)
     }
 }

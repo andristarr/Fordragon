@@ -6,7 +6,7 @@ use std::{
 use semaphore::Semaphore;
 
 pub trait TickerTrait {
-    fn register(&mut self, callback: Box<dyn Fn() -> () + Send>);
+    fn register(&mut self, callback: Box<dyn Fn() + Send>);
     fn run(&mut self);
 }
 
@@ -17,7 +17,7 @@ pub struct Ticker {
 }
 
 pub struct TickerState {
-    callbacks: Vec<Box<dyn Fn() -> () + Send>>,
+    callbacks: Vec<Box<dyn Fn() + Send>>,
     running: bool,
 }
 
@@ -35,7 +35,7 @@ impl Ticker {
 }
 
 impl TickerTrait for Ticker {
-    fn register(&mut self, callback: Box<dyn Fn() -> () + Send>) {
+    fn register(&mut self, callback: Box<dyn Fn() + Send>) {
         self.state.lock().unwrap().callbacks.push(callback);
     }
 

@@ -83,10 +83,10 @@ impl DatabaseHandler {
             ))
         })?;
 
-        Ok(collection
+        collection
             .delete_one(filter, None)
             .await
-            .map_err(|e| Error::DatabaseError(DatabaseError::Generic(e.to_string())))?)
+            .map_err(|e| Error::DatabaseError(DatabaseError::Generic(e.to_string())))
     }
 
     pub async fn get<T: Serialize + for<'a> Deserialize<'a>>(

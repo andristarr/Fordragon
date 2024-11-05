@@ -1,4 +1,3 @@
-use crate::common::error::Error;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};

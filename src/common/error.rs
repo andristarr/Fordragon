@@ -1,39 +1,25 @@
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 pub enum Error {
+    #[error("Invalid arguments: {0}")]
     InvalidArguments(String),
+    #[error("Database error: {0}")]
     DatabaseError(DatabaseError),
+    #[error("Parsing error: {0}")]
     ParsingError(String),
+    #[error("File error: {0}")]
     FileError(String),
+    #[error("Address parsing error: {0}")]
     AddressParsingError(String),
+    #[error("Runtime error: {0}")]
     RuntimeError(String),
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DatabaseError {
+    #[error("Database error: {0}")]
     Generic(String),
+    #[error("Existing database item: {0}")]
     ExistingItem(String),
-}
-
-impl From<mongodb::error::Error> for Error {
-    fn from(value: mongodb::error::Error) -> Self {
-        Error::DatabaseError(DatabaseError::Generic(value.to_string()))
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(value: serde_json::Error) -> Self {
-        Error::ParsingError(value.to_string())
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(value: std::io::Error) -> Self {
-        Error::FileError(value.to_string())
-    }
-}
-
-impl From<std::net::AddrParseError> for Error {
-    fn from(value: std::net::AddrParseError) -> Self {
-        Error::AddressParsingError(value.to_string())
-    }
 }

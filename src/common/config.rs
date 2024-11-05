@@ -1,4 +1,5 @@
 use crate::common::error::Error;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
 
@@ -10,7 +11,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn get() -> Result<Config, Error> {
+    pub fn get() -> Result<Config> {
         let current_dir = env::current_dir()?;
 
         println!("{:?}", current_dir);

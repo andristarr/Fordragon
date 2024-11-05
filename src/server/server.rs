@@ -1,8 +1,6 @@
 use crate::server::packet_handler::packet_handler::PacketHandler;
-use crate::{
-    common::{config::Config, error::Error},
-    server::packets::packet::Packet,
-};
+use crate::{common::config::Config, server::packets::packet::Packet};
+use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
@@ -18,7 +16,7 @@ impl<'a> Server<'a> {
         Server { packet_handler }
     }
 
-    pub async fn run(&mut self) -> Result<(), Error> {
+    pub async fn run(&mut self) -> Result<()> {
         let _config = Config::get()?;
 
         let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;

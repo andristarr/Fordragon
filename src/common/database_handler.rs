@@ -1,5 +1,6 @@
 use crate::common::error::{DatabaseError, Error};
 use crate::common::validation::Validateable;
+use anyhow::{bail, Result};
 use mongodb::bson::Document;
 use mongodb::bson::{doc, from_document, to_document};
 use mongodb::options::{ClientOptions, ServerApi, ServerApiVersion};
@@ -15,7 +16,7 @@ pub struct DatabaseHandler {
 }
 
 impl DatabaseHandler {
-    pub async fn new(uri: &str) -> Result<Self, Error> {
+    pub async fn new(uri: &str) -> Result<Self> {
         let mut client_options = ClientOptions::parse(uri).await?;
 
         let server_api = ServerApi::builder().version(ServerApiVersion::V1).build();
@@ -39,7 +40,7 @@ impl DatabaseHandler {
         self
     }
 
-    pub fn connect_collection(mut self, collection_name: &str) -> Result<DatabaseHandler, Error> {
+    pub fn connect_collection(mut self, collection_name: &str) -> Result<DatabaseHandler> {
         let collection = self
             .db
             .as_ref()
@@ -55,12 +56,11 @@ impl DatabaseHandler {
     pub async fn add<T: Serialize + Validateable<T> + Debug>(
         &self,
         item: T,
-    ) -> Result<InsertOneResult, Error> {
-        if item.validate_add(self) {
-            return Err(Error::DatabaseError(DatabaseError::ExistingItem(format!(
-                "Item already exists: {:?}",
-                item
-            ))));
+    ) -> Result<InsertOneResult> {
+        if item.validate_add(self).await {
+            bail!(Error::DatabaseError(DatabaseError::Generic(
+                "Validation failed".to_string()
+            )));
         }
 
         let collection = self.collection.as_ref().ok_or_else(|| {
@@ -83,13 +83,16 @@ impl DatabaseHandler {
             ))
         })?;
 
-        Ok(collection.delete_one(filter, None).await?)
+        Ok(collection
+            .delete_one(filter, None)
+            .await
+            .map_err(|e| Error::DatabaseError(DatabaseError::Generic(e.to_string())))?)
     }
 
     pub async fn get<T: Serialize + for<'a> Deserialize<'a>>(
         &self,
         name: &str,
-    ) -> Result<Option<T>, Error> {
+    ) -> Result<Option<T>> {
         let filter = doc! { "name": name };
 
         let collection = self.collection.as_ref().ok_or_else(|| {

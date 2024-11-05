@@ -5,10 +5,7 @@ use std::sync::{Arc, Mutex};
 use server::{
     packet_handler::builder::ServerPacketHandlerBuilder,
     server::Server,
-    state::{
-        state_handler::ServerStateHandler,
-        ticker::Ticker,
-    },
+    state::{state_handler::ServerStateHandler, ticker::Ticker},
 };
 
 mod common;

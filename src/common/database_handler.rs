@@ -1,6 +1,6 @@
 use crate::common::error::{DatabaseError, Error};
 use crate::common::validation::Validateable;
-use anyhow::{bail, Result};
+use anyhow::Result;
 use mongodb::bson::Document;
 use mongodb::bson::{doc, from_document, to_document};
 use mongodb::options::{ClientOptions, ServerApi, ServerApiVersion};
@@ -58,9 +58,10 @@ impl DatabaseHandler {
         item: T,
     ) -> Result<InsertOneResult> {
         if item.validate_add(self).await {
-            bail!(Error::DatabaseError(DatabaseError::Generic(
-                "Validation failed".to_string()
-            )));
+            return Err(Error::DatabaseError(DatabaseError::Generic(
+                "Validation failed".to_string(),
+            ))
+            .into());
         }
 
         let collection = self.collection.as_ref().ok_or_else(|| {

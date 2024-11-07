@@ -40,6 +40,7 @@ impl TickerTrait for Ticker {
     }
 
     fn run(&mut self) {
+        println!("Running ticker...");
         let tick_length = 1_000 / u128::from(self.tick_count);
 
         let mut next_run_time: u128 = tick_length;
@@ -61,7 +62,7 @@ impl TickerTrait for Ticker {
 
                     let millis = now.duration_since(UNIX_EPOCH).unwrap().as_millis() % 1_000;
 
-                    if millis >= next_run_time {
+                    if millis >= next_run_time || (millis == 0 && next_run_time == 1_000) {
                         next_run_time = (millis / tick_length) * tick_length + tick_length;
 
                         for callback in &shared.lock().unwrap().callbacks {

@@ -1,7 +1,9 @@
+use crate::server::components::position::Position;
 use crate::server::components::shared::vec3d::Vec3d;
 use crate::server::opcode::OpCode;
 use crate::server::packets::move_packet::MovePacket;
 use crate::server::packets::packet::Packet;
+use crate::server::packets::spawn_packet::SpawnPacket;
 use crate::server::state::state_handler::StateHandler;
 use crate::server::systems::command_container::CommandContainer;
 use std::collections::VecDeque;
@@ -31,11 +33,11 @@ impl<T: StateHandler> PacketHandler for ServerPacketHandler<T> {
 
                 // TODO probably an incredibly huge bottleneck
 
-                let mut world = world.lock().unwrap();
+                let mut world = world.write().unwrap();
 
                 let mut res = world.resource_mut::<CommandContainer<Vec3d>>();
 
-                let packet_data = MovePacket::from_str(&packet.data).unwrap();
+                let packet_data = serde_json::from_str::<MovePacket>(&packet.data).unwrap();
 
                 match res.entries.get_mut(&packet_data.entity) {
                     Some(queue) => {
@@ -52,7 +54,33 @@ impl<T: StateHandler> PacketHandler for ServerPacketHandler<T> {
             }
             OpCode::Auth => todo!(),
             OpCode::Existence => todo!(),
-            OpCode::Spawn => todo!(),
+            OpCode::Spawn => {
+                // ideally this will be extracted
+                let world = self.state_handler.get_world();
+
+                // TODO probably an incredibly huge bottleneck
+                {
+                    let mut world = world.write().unwrap();
+
+                    let packet_data = serde_json::from_str::<SpawnPacket>(&packet.data).unwrap();
+
+                    let entity = world
+                        .spawn(Position {
+                            position: Vec3d {
+                                x: packet_data.location.x,
+                                y: packet_data.location.y,
+                                z: packet_data.location.z,
+                            },
+                        })
+                        .id();
+
+                    println!("Spawned entity: {:?}", entity);
+
+                    let mut res = world.resource_mut::<CommandContainer<Vec3d>>();
+
+                    res.entries.insert(entity, VecDeque::new());
+                }
+            }
         }
     }
 

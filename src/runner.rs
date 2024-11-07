@@ -19,7 +19,7 @@ async fn main() {
 
     let packet_handler = ServerPacketHandlerBuilder::build(state_handler);
 
-    let mut server = Server::new(Box::new(packet_handler));
+    let mut server = Server::new(packet_handler);
 
     let _ = server.run().await;
 }

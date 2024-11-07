@@ -14,12 +14,10 @@ pub fn movement_system(
 ) {
     for (entity, mut position) in query.iter_mut() {
         if let Some(commands) = movement_commands.entries.get_mut(&entity) {
-            loop {
-                if let Some(command) = commands.pop_front() {
-                    position.position.x += command.x;
-                    position.position.y += command.y;
-                    position.position.z += command.z;
-                }
+            while let Some(command) = commands.pop_front() {
+                position.position.x += command.x;
+                position.position.y += command.y;
+                position.position.z += command.z;
             }
         }
     }

@@ -12,6 +12,10 @@ path = "src/cli.rs"
 name = "runner"
 path = "src/runner.rs"
 
+[[bin]]
+name = "mock_client"
+path = "src/mock_client.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

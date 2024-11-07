@@ -5,21 +5,21 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
-pub struct Server<'a> {
-    packet_handler: Box<dyn PacketHandler + 'a>,
+pub struct Server<T: PacketHandler> {
+    packet_handler: T,
 }
 
-impl<'a> Server<'a> {
-    pub fn new(mut packet_handler: Box<dyn PacketHandler + 'a>) -> Self {
+impl<T: PacketHandler> Server<T> {
+    pub fn new(mut packet_handler: T) -> Self {
         packet_handler.initialise();
 
         Server { packet_handler }
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        let _config = Config::get()?;
-
         let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;
+
+        println!("Server started on {:?}", sock.local_addr()?);
 
         let receiver = Arc::new(sock);
         let sender = receiver.clone();
@@ -33,19 +33,22 @@ impl<'a> Server<'a> {
             }
         });
 
-        let mut buf = [0; 1024];
+        let mut buf = [0; 4096];
+
+        let mut counter = 0;
 
         loop {
             // receiver
             let (len, addr) = receiver.recv_from(&mut buf).await?;
-            println!("{:?} bytes received from {:?}", len, addr);
+            println!("[{:?}] {:?} bytes received from {:?}", counter, len, addr);
 
-            let packet =
-                serde_json::from_str::<Packet>(std::str::from_utf8(&buf).unwrap()).unwrap();
+            let as_str = std::str::from_utf8(&buf[..len]).unwrap();
 
-            println!("Received: {:?}", packet);
+            let packet: Packet = serde_json::from_str::<Packet>(as_str).unwrap();
 
             self.packet_handler.consume(packet);
+
+            counter += 1;
         }
     }
 }

@@ -13,8 +13,6 @@ impl Config {
     pub fn get() -> Result<Config> {
         let current_dir = env::current_dir()?;
 
-        println!("{:?}", current_dir);
-
         Ok(serde_json::from_str::<Config>(&fs::read_to_string(
             "server.json",
         )?)?)

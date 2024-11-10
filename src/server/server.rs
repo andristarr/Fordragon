@@ -1,5 +1,5 @@
 use crate::server::packet_handler::packet_handler::PacketHandler;
-use crate::{common::config::Config, server::packets::packet::Packet};
+use crate::server::packets::packet::Packet;
 use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;

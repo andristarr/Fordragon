@@ -1,7 +1,6 @@
 use std::{iter, net::SocketAddr, sync::Arc, thread, time::Duration};
 
 use anyhow::Result;
-use common::config::Config;
 use server::{
     components::shared::vec3d::Vec3d,
     packets::{packet::Packet, spawn_packet::SpawnPacket},
@@ -19,7 +18,7 @@ impl MockClient {
 
         let receiver = Arc::new(sock);
         let sender = receiver.clone();
-        let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
+        let (_tx, rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
         tokio::spawn(async move {
             loop {

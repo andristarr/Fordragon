@@ -12,7 +12,7 @@ pub fn trivival_move_system(
     mut query: Query<(Entity, &mut Position), With<Position>>,
     mut movement_commands: ResMut<CommandContainer<Vec3d>>,
 ) {
-    for (entity, mut position) in query.iter_mut() {
+    for (entity, _position) in query.iter_mut() {
         if let Some(commands) = movement_commands.entries.get_mut(&entity) {
             commands.push_back(Vec3d {
                 x: 1.0,

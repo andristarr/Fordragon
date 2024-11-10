@@ -1,5 +1,5 @@
 use bevy_ecs::{
-    schedule::{ExecutorKind, Schedule},
+    schedule::Schedule,
     world::World,
 };
 use std::sync::{Arc, Mutex, RwLock};
@@ -24,7 +24,7 @@ pub struct ServerStateHandler<T: TickerTrait> {
 
 impl<T: TickerTrait> ServerStateHandler<T> {
     pub fn new(ticker: Arc<Mutex<T>>) -> Self {
-        let mut schedule = Schedule::default();
+        let schedule = Schedule::default();
 
         ServerStateHandler {
             world: Arc::new(RwLock::new(World::default())),

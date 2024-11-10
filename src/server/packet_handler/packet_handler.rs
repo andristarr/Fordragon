@@ -7,7 +7,6 @@ use crate::server::packets::spawn_packet::SpawnPacket;
 use crate::server::state::state_handler::StateHandler;
 use crate::server::systems::command_container::CommandContainer;
 use std::collections::VecDeque;
-use std::str::FromStr;
 
 pub trait PacketHandler {
     fn consume(&self, packet: Packet);

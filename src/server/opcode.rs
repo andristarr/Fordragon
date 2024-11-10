@@ -4,6 +4,5 @@ use serde::{Deserialize, Serialize};
 pub enum OpCode {
     Movement,
     Auth,
-    Existence,
     Spawn,
 }

@@ -8,7 +8,7 @@ use crate::server::components::{position::Position, shared::vec3d::Vec3d};
 
 use super::command_container::CommandContainer;
 
-pub fn patrol_system(
+pub fn trivival_move_system(
     mut query: Query<(Entity, &mut Position), With<Position>>,
     mut movement_commands: ResMut<CommandContainer<Vec3d>>,
 ) {

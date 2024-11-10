@@ -53,7 +53,6 @@ impl<T: StateHandler> PacketHandler for ServerPacketHandler<T> {
                 }
             }
             OpCode::Auth => todo!(),
-            OpCode::Existence => todo!(),
             OpCode::Spawn => {
                 // ideally this will be extracted
                 let world = self.state_handler.get_world();

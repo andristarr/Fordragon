@@ -54,7 +54,7 @@ impl<T: TickerTrait> StateHandler for ServerStateHandler<T> {
             .lock()
             .unwrap()
             .add_systems(systems::movement::movement_system)
-            .add_systems(systems::patrol::patrol_system);
+            .add_systems(systems::trivial_move::trivival_move_system);
 
         self.ticker.lock().unwrap().register(Box::new(move || {
             let mut world = world.write().unwrap();

@@ -1,3 +1,3 @@
 pub mod command_container;
 pub mod movement;
-pub mod patrol;
+pub mod trivial_move;

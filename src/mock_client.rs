@@ -1,4 +1,4 @@
-use std::{iter, net::SocketAddr, sync::Arc, thread::sleep, time::Duration};
+use std::{iter, net::SocketAddr, sync::Arc, thread, time::Duration};
 
 use anyhow::Result;
 use common::config::Config;
@@ -22,37 +22,41 @@ impl MockClient {
         let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
         tokio::spawn(async move {
-            // sender
-            let spawn_packets: Vec<SpawnPacket> = iter::repeat(SpawnPacket {
-                location: Vec3d {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                spawned_type: "player".to_string(),
-            })
-            .take(1000)
-            .collect();
+            loop {
+                thread::sleep(Duration::from_secs(1));
 
-            println!("Length of packets: {:?}", spawn_packets.len());
-
-            let mut counter = 0;
-
-            for packet in spawn_packets {
-                let packet = serde_json::to_string(&Packet {
-                    opcode: server::opcode::OpCode::Spawn,
-                    data: serde_json::to_string(&packet).unwrap(),
+                // sender
+                let spawn_packets: Vec<SpawnPacket> = iter::repeat(SpawnPacket {
+                    location: Vec3d {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    },
+                    spawned_type: "player".to_string(),
                 })
-                .unwrap();
+                .take(5000)
+                .collect();
 
-                sender
-                    .send_to(packet.as_bytes(), "127.0.0.1:1337")
-                    .await
+                println!("Length of packets: {:?}", spawn_packets.len());
+
+                let mut counter = 0;
+
+                for packet in spawn_packets {
+                    let packet = serde_json::to_string(&Packet {
+                        opcode: server::opcode::OpCode::Spawn,
+                        data: serde_json::to_string(&packet).unwrap(),
+                    })
                     .unwrap();
 
-                counter += 1;
+                    sender
+                        .send_to(packet.as_bytes(), "127.0.0.1:1337")
+                        .await
+                        .unwrap();
 
-                println!("Sent packet {:?}", counter);
+                    counter += 1;
+
+                    println!("Sent packet {:?}", counter);
+                }
             }
         });
 

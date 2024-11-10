@@ -26,8 +26,6 @@ impl<T: TickerTrait> ServerStateHandler<T> {
     pub fn new(ticker: Arc<Mutex<T>>) -> Self {
         let mut schedule = Schedule::default();
 
-        schedule.set_executor_kind(ExecutorKind::SingleThreaded);
-
         ServerStateHandler {
             world: Arc::new(RwLock::new(World::default())),
             schedule: Arc::new(Mutex::new(schedule)),
@@ -51,15 +49,20 @@ impl<T: TickerTrait> StateHandler for ServerStateHandler<T> {
             });
 
         // system registrations here for now, should be in their own schedules
+        // no meaningful systems yet, this is just to stress test, it seems around 140k entities it starts to slow down for the targeted 8/s tickrate
         schedule
             .lock()
             .unwrap()
-            .add_systems(systems::movement::movement_system);
+            .add_systems(systems::movement::movement_system)
+            .add_systems(systems::patrol::patrol_system);
 
         self.ticker.lock().unwrap().register(Box::new(move || {
             let mut world = world.write().unwrap();
             let mut schedule = schedule.lock().unwrap();
+            println!("Running schedule");
+            let now = std::time::Instant::now();
             schedule.run(&mut world);
+            println!("Schedule run complete in: {:?}", now.elapsed().as_millis());
         }));
 
         self.ticker.lock().unwrap().run();

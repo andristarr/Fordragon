@@ -20,9 +20,11 @@ impl MockClient {
         let sender = receiver.clone();
         let (_tx, rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
+        let mut packet_id = 0;
+
         tokio::spawn(async move {
             loop {
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(1_000));
 
                 // sender
                 let spawn_packets: Vec<SpawnPacket> = iter::repeat(SpawnPacket {
@@ -33,7 +35,7 @@ impl MockClient {
                     },
                     spawned_type: "player".to_string(),
                 })
-                .take(5000)
+                .take(10)
                 .collect();
 
                 println!("Length of packets: {:?}", spawn_packets.len());
@@ -42,10 +44,13 @@ impl MockClient {
 
                 for packet in spawn_packets {
                     let packet = serde_json::to_string(&Packet {
+                        id: packet_id,
                         opcode: server::opcode::OpCode::Spawn,
                         data: serde_json::to_string(&packet).unwrap(),
                     })
                     .unwrap();
+
+                    packet_id += 1;
 
                     sender
                         .send_to(packet.as_bytes(), "127.0.0.1:1337")

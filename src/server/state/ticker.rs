@@ -5,7 +5,7 @@ use std::{
 
 use semaphore::Semaphore;
 
-pub trait TickerTrait {
+pub trait TickerTrait: Send + Sync {
     fn register(&mut self, callback: Box<dyn Fn() + Send>);
     fn run(&mut self);
 }
@@ -57,13 +57,17 @@ impl TickerTrait for Ticker {
             state.running = true;
 
             tokio::spawn(async move {
+                let mut now = std::time::Instant::now();
                 loop {
-                    let now = SystemTime::now();
 
-                    let millis = now.duration_since(UNIX_EPOCH).unwrap().as_millis() % 1_000;
+                    let millis = now.elapsed().as_millis();
 
-                    if millis >= next_run_time || (millis == 0 && next_run_time == 1_000) {
-                        next_run_time = (millis / tick_length) * tick_length + tick_length;
+                    if millis >= tick_length {
+                        if millis > tick_length {
+                            println!("Throtting detected, last tick took {}ms", millis);
+                        }
+
+                        now = std::time::Instant::now();
 
                         for callback in &shared.lock().unwrap().callbacks {
                             callback();

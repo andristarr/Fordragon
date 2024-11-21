@@ -1,7 +1,4 @@
-use bevy_ecs::{
-    schedule::Schedule,
-    world::World,
-};
+use bevy_ecs::{schedule::Schedule, world::World};
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
@@ -16,14 +13,14 @@ pub trait StateHandler {
     fn get_world(&self) -> Arc<RwLock<World>>;
 }
 
-pub struct ServerStateHandler<T: TickerTrait> {
+pub struct ServerStateHandler {
     pub(super) world: Arc<RwLock<World>>,
     pub(super) schedule: Arc<Mutex<Schedule>>,
-    pub(super) ticker: Arc<Mutex<T>>,
+    pub(super) ticker: Arc<Mutex<dyn TickerTrait>>,
 }
 
-impl<T: TickerTrait> ServerStateHandler<T> {
-    pub fn new(ticker: Arc<Mutex<T>>) -> Self {
+impl ServerStateHandler {
+    pub fn new(ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
         let schedule = Schedule::default();
 
         ServerStateHandler {
@@ -34,7 +31,7 @@ impl<T: TickerTrait> ServerStateHandler<T> {
     }
 }
 
-impl<T: TickerTrait> StateHandler for ServerStateHandler<T> {
+impl StateHandler for ServerStateHandler {
     fn start(&mut self) {
         let world = self.world.clone();
         let schedule = self.schedule.clone();

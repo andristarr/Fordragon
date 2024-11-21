@@ -40,13 +40,13 @@ impl<T: PacketHandler> Server<T> {
         loop {
             // receiver
             let (len, addr) = receiver.recv_from(&mut buf).await?;
-            println!("[{:?}] {:?} bytes received from {:?}", counter, len, addr);
+            // println!("[{:?}] {:?} bytes received from {:?}", counter, len, addr);
 
             let as_str = std::str::from_utf8(&buf[..len]).unwrap();
 
             let packet: Packet = serde_json::from_str::<Packet>(as_str).unwrap();
 
-            self.packet_handler.consume(packet);
+            self.packet_handler.consume(packet, addr);
 
             counter += 1;
         }

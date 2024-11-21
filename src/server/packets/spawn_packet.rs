@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 
 use crate::server::components::shared::vec3d::Vec3d;

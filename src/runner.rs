@@ -15,9 +15,11 @@ mod server;
 async fn main() {
     let ticker = Ticker::new(8);
 
-    let state_handler = ServerStateHandler::new(Arc::new(Mutex::new(ticker)));
+    let ticker = Arc::new(Mutex::new(ticker));
 
-    let packet_handler = ServerPacketHandlerBuilder::build(state_handler);
+    let state_handler = ServerStateHandler::new(ticker.clone());
+
+    let packet_handler = ServerPacketHandlerBuilder::build(state_handler, ticker.clone());
 
     let mut server = Server::new(packet_handler);
 

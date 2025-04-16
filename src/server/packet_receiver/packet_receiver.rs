@@ -2,9 +2,8 @@ use crate::server::components::position::Position;
 use crate::server::components::shared::vec3d::Vec3d;
 use crate::server::opcode::OpCode;
 use crate::server::packets::move_packet::MovePacket;
-use crate::server::packets::packet::{self, Packet};
+use crate::server::packets::packet::Packet;
 use crate::server::packets::spawn_packet::SpawnPacket;
-use crate::server::state;
 use crate::server::state::state_handler::{ServerStateHandler, StateHandler};
 use crate::server::state::ticker::TickerTrait;
 use crate::server::systems::command_container::CommandContainer;
@@ -12,26 +11,26 @@ use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
-pub trait PacketHandler {
+pub trait PacketReceiver {
     fn consume(&self, packet: Packet, addr: SocketAddr);
     fn initialise(&mut self);
-    fn inject_packets(handler: Arc<Mutex<ServerPacketHandlerState<ServerStateHandler>>>);
+    fn inject_packets(handler: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>);
 }
 
-pub struct ServerPacketHandler {
+pub struct ServerPacketReceiver {
     ticker: Arc<Mutex<dyn TickerTrait>>,
-    state: Arc<Mutex<ServerPacketHandlerState<ServerStateHandler>>>,
+    state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
 }
 
-pub struct ServerPacketHandlerState<T: StateHandler> {
+pub struct ServerPacketReceiverState<T: StateHandler> {
     pub(super) state_handler: T,
     packets: HashMap<OpCode, Vec<Packet>>,
     connections: HashMap<SocketAddr, u128>,
 }
 
-impl ServerPacketHandler {
+impl ServerPacketReceiver {
     pub fn new(state_handler: ServerStateHandler, ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
-        let state = ServerPacketHandlerState {
+        let state = ServerPacketReceiverState {
             state_handler,
             packets: HashMap::new(),
             connections: HashMap::new(),
@@ -39,12 +38,12 @@ impl ServerPacketHandler {
 
         let state = Arc::new(Mutex::new(state));
 
-        ServerPacketHandler { ticker, state }
+        ServerPacketReceiver { ticker, state }
     }
 }
 
-impl PacketHandler for ServerPacketHandler {
-    fn inject_packets(state: Arc<Mutex<ServerPacketHandlerState<ServerStateHandler>>>) {
+impl PacketReceiver for ServerPacketReceiver {
+    fn inject_packets(state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>) {
         let world = state.lock().unwrap().state_handler.get_world();
 
         for (opcode, packets) in state.lock().unwrap().packets.iter() {
@@ -181,7 +180,7 @@ impl PacketHandler for ServerPacketHandler {
         self.ticker.lock().unwrap().register(Box::new(move || {
             println!("Injecting packets...");
 
-            ServerPacketHandler::inject_packets(state.clone());
+            ServerPacketReceiver::inject_packets(state.clone());
         }));
 
         self.state.lock().unwrap().state_handler.start();

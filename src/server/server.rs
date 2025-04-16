@@ -1,15 +1,15 @@
-use crate::server::packet_handler::packet_handler::PacketHandler;
+use crate::server::packet_receiver::packet_receiver::PacketReceiver;
 use crate::server::packets::packet::Packet;
 use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
-pub struct Server<T: PacketHandler> {
+pub struct Server<T: PacketReceiver> {
     packet_handler: T,
 }
 
-impl<T: PacketHandler> Server<T> {
+impl<T: PacketReceiver> Server<T> {
     pub fn new(mut packet_handler: T) -> Self {
         packet_handler.initialise();
 

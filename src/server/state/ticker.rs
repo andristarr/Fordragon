@@ -43,8 +43,6 @@ impl TickerTrait for Ticker {
         println!("Running ticker...");
         let tick_length = 1_000 / u128::from(self.tick_count);
 
-        let mut next_run_time: u128 = tick_length;
-
         let shared = Arc::clone(&self.state);
 
         let mut state = self.state.lock().unwrap();

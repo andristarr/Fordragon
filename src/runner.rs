@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 
 use server::{
-    packet_handler::builder::ServerPacketHandlerBuilder,
+    packet_receiver::builder::ServerPacketReceiverBuilder,
     server::Server,
     state::{state_handler::ServerStateHandler, ticker::Ticker},
 };
@@ -19,9 +19,9 @@ async fn main() {
 
     let state_handler = ServerStateHandler::new(ticker.clone());
 
-    let packet_handler = ServerPacketHandlerBuilder::build(state_handler, ticker.clone());
+    let packet_receiver = ServerPacketReceiverBuilder::build(state_handler, ticker.clone());
 
-    let mut server = Server::new(packet_handler);
+    let mut server = Server::new(packet_receiver);
 
     let _ = server.run().await;
 }

@@ -5,15 +5,15 @@ use crate::server::state::{
     ticker::TickerTrait,
 };
 
-use super::packet_handler::ServerPacketHandler;
+use super::packet_receiver::ServerPacketReceiver;
 
-pub struct ServerPacketHandlerBuilder;
+pub struct ServerPacketReceiverBuilder;
 
-impl ServerPacketHandlerBuilder {
+impl ServerPacketReceiverBuilder {
     pub fn build(
         state_handler: ServerStateHandler,
         ticker: Arc<Mutex<dyn TickerTrait>>,
-    ) -> ServerPacketHandler {
-        ServerPacketHandler::new(state_handler, ticker)
+    ) -> ServerPacketReceiver {
+        ServerPacketReceiver::new(state_handler, ticker)
     }
 }

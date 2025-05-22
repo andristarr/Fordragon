@@ -5,15 +5,21 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
-pub struct Server<T: PacketReceiver> {
-    packet_handler: T,
+use super::packet_sender::packet_sender::PacketSender;
+
+pub struct Server<T: PacketReceiver, U: PacketSender> {
+    packet_receiver: T,
+    packet_sender: U,
 }
 
-impl<T: PacketReceiver> Server<T> {
-    pub fn new(mut packet_handler: T) -> Self {
-        packet_handler.initialise();
+impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
+    pub fn new(mut packet_receiver: T, mut packet_sender: U) -> Self {
+        packet_receiver.initialise();
 
-        Server { packet_handler }
+        Server {
+            packet_receiver,
+            packet_sender,
+        }
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -46,7 +52,8 @@ impl<T: PacketReceiver> Server<T> {
 
             let packet: Packet = serde_json::from_str::<Packet>(as_str).unwrap();
 
-            self.packet_handler.consume(packet, addr);
+            self.packet_receiver.consume(packet, addr);
+            self.packet_sender.try_register(addr);
 
             counter += 1;
         }

@@ -57,7 +57,6 @@ impl TickerTrait for Ticker {
             tokio::spawn(async move {
                 let mut now = std::time::Instant::now();
                 loop {
-
                     let millis = now.elapsed().as_millis();
 
                     if millis >= tick_length {

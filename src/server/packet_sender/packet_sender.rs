@@ -40,18 +40,10 @@ impl PacketSender for ServerPacketSender {
     fn try_register(&mut self, addr: SocketAddr) {
         println!("Registering address {:?}", addr);
 
-        if !self
-            .state
-            .lock()
-            .unwrap()
-            .connections
-            .contains(&Arc::new(addr))
-        {
-            self.state
-                .lock()
-                .unwrap()
-                .connections
-                .insert(Arc::new(addr));
+        let mut state = self.state.lock().unwrap();
+
+        if !state.connections.contains(&Arc::new(addr)) {
+            state.connections.insert(Arc::new(addr));
         }
     }
 

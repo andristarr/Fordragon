@@ -72,9 +72,6 @@ impl PacketSender for ServerPacketSender {
     }
 
     fn emit_packets(state: Arc<Mutex<ServerPacketSenderState>>) {
-        println!("Emiting packets");
-
-        // Clone what you need outside the async block
         let (packets, connections, socket) = {
             let mut state = state.lock().unwrap();
             let packets = std::mem::take(&mut state.packets);
@@ -82,6 +79,8 @@ impl PacketSender for ServerPacketSender {
             let socket = state.socket.clone().unwrap();
             (packets, connections, socket)
         };
+
+        println!("Emiting {:?} packets", packets.len());
 
         tokio::spawn(async move {
             use futures::future::join_all;

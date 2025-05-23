@@ -10,7 +10,7 @@ use super::packet_sender::ServerPacketSender;
 pub struct ServerPacketSenderBuilder;
 
 impl ServerPacketSenderBuilder {
-    pub fn build() -> ServerPacketSender {
-        ServerPacketSender::new()
+    pub fn build(ticker: Arc<Mutex<dyn TickerTrait>>) -> ServerPacketSender {
+        ServerPacketSender::new(ticker)
     }
 }

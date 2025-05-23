@@ -46,7 +46,7 @@ impl StateHandler for ServerStateHandler {
             });
 
         // system registrations here for now, should be in their own schedules
-        // no meaningful systems yet, this is just to stress test, it seems around 140k entities it starts to slow down for the targeted 8/s tickrate
+        // no meaningful systems yet, this is just to stress test, it seems around 300k entities it starts to slow down for the targeted 8/s tickrate
         schedule
             .lock()
             .unwrap()

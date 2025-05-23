@@ -1,38 +1,43 @@
 use std::{
     collections::HashSet,
-    net::{SocketAddr, UdpSocket},
+    net::SocketAddr,
     sync::{Arc, Mutex},
 };
 
-use crate::server::{packets::packet::Packet, server::Server};
+use tokio::net::UdpSocket;
+
+use crate::server::{packets::packet::Packet, server::Server, state::ticker::TickerTrait};
 
 pub struct ServerPacketSenderState {
     pub packets: Vec<Packet>,
     pub connections: HashSet<Arc<SocketAddr>>,
+    pub socket: Option<Arc<UdpSocket>>,
 }
 
 // this is the trivial implementation where everything gets broadcasted to everyone
 pub trait PacketSender {
     fn try_register(&mut self, addr: SocketAddr);
     fn send(&self, packet: Packet, addr: SocketAddr);
-    fn initialise(&mut self);
-    fn inject_packets(state: Arc<Mutex<ServerPacketSenderState>>);
+    fn initialise(&mut self, socket: Arc<UdpSocket>);
+    fn emit_packets(state: Arc<Mutex<ServerPacketSenderState>>);
 }
 
 pub struct ServerPacketSender {
     pub state: Arc<Mutex<ServerPacketSenderState>>,
+    ticker: Arc<Mutex<dyn TickerTrait>>,
 }
 
 impl ServerPacketSender {
-    pub fn new() -> Self {
+    pub fn new(ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
         let state = ServerPacketSenderState {
             packets: Vec::new(),
             connections: HashSet::new(),
+            socket: None,
         };
 
         let state = Arc::new(Mutex::new(state));
 
-        ServerPacketSender { state }
+        ServerPacketSender { state, ticker }
     }
 }
 
@@ -51,13 +56,62 @@ impl PacketSender for ServerPacketSender {
         println!("Sending packet to {:?}", addr);
     }
 
-    fn initialise(&mut self) {
-        // TODO implement this
+    fn initialise(&mut self, socket: Arc<UdpSocket>) {
         println!("Initialising packet sender");
+
+        let mut state = self.state.lock().unwrap();
+
+        state.socket = Some(socket.clone());
+
+        let state = self.state.clone();
+
+        self.ticker.lock().unwrap().register(Box::new(move || {
+            // Emit packets every tick
+            ServerPacketSender::emit_packets(state.clone());
+        }));
     }
 
-    fn inject_packets(state: Arc<Mutex<ServerPacketSenderState>>) {
-        // TODO implement this
-        println!("Injecting packets");
+    fn emit_packets(state: Arc<Mutex<ServerPacketSenderState>>) {
+        println!("Emiting packets");
+
+        // Clone what you need outside the async block
+        let (packets, connections, socket) = {
+            let mut state = state.lock().unwrap();
+            let packets = std::mem::take(&mut state.packets);
+            let connections = state.connections.clone();
+            let socket = state.socket.clone().unwrap();
+            (packets, connections, socket)
+        };
+
+        tokio::spawn(async move {
+            use futures::future::join_all;
+
+            let mut send_futures = Vec::new();
+
+            for packet in packets {
+                let bytes = match serde_json::to_vec(&packet) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        eprintln!("Failed to serialize packet: {:?}", e);
+                        continue;
+                    }
+                };
+
+                for addr in &connections {
+                    let socket = socket.clone();
+                    let addr = addr.clone();
+                    let bytes = bytes.clone();
+
+                    let fut = async move {
+                        if let Err(e) = socket.send_to(&bytes, &*addr).await {
+                            eprintln!("Failed to send packet: {:?}", e);
+                        }
+                    };
+                    send_futures.push(fut);
+                }
+            }
+
+            join_all(send_futures).await;
+        });
     }
 }

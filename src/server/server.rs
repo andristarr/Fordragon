@@ -31,6 +31,8 @@ impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
         let sender = receiver.clone();
         let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
+        self.packet_sender.initialise(sender.clone());
+
         tokio::spawn(async move {
             // sender
             while let Some((bytes, addr)) = rx.recv().await {

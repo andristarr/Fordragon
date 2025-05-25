@@ -3,6 +3,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use log::{debug, warn};
 use semaphore::Semaphore;
 
 pub trait TickerTrait: Send + Sync {
@@ -40,7 +41,7 @@ impl TickerTrait for Ticker {
     }
 
     fn run(&mut self) {
-        println!("Running ticker...");
+        debug!("Running ticker...");
         let tick_length = 1_000 / u128::from(self.tick_count);
 
         let shared = Arc::clone(&self.state);
@@ -61,7 +62,7 @@ impl TickerTrait for Ticker {
 
                     if millis >= tick_length {
                         if millis > tick_length {
-                            println!("Throtting detected, last tick took {}ms", millis);
+                            warn!("Throtting detected, last tick took {}ms", millis);
                         }
 
                         now = std::time::Instant::now();

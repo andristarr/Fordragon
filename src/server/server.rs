@@ -1,6 +1,7 @@
 use crate::server::packet_receiver::packet_receiver::PacketReceiver;
 use crate::server::packets::packet::Packet;
 use anyhow::Result;
+use log::{debug, info};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
@@ -25,7 +26,7 @@ impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
     pub async fn run(&mut self) -> Result<()> {
         let sock = UdpSocket::bind("0.0.0.0:1337".parse::<SocketAddr>()?).await?;
 
-        println!("Server started on {:?}", sock.local_addr()?);
+        info!("Server started on {:?}", sock.local_addr()?);
 
         let receiver = Arc::new(sock);
         let sender = receiver.clone();
@@ -37,7 +38,7 @@ impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
             // sender
             while let Some((bytes, addr)) = rx.recv().await {
                 let len = sender.send_to(&bytes, &addr).await.unwrap();
-                println!("{:?} bytes sent", len);
+                debug!("{:?} bytes sent", len);
             }
         });
 
@@ -48,7 +49,6 @@ impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
         loop {
             // receiver
             let (len, addr) = receiver.recv_from(&mut buf).await?;
-            // println!("[{:?}] {:?} bytes received from {:?}", counter, len, addr);
 
             let as_str = std::str::from_utf8(&buf[..len]).unwrap();
 

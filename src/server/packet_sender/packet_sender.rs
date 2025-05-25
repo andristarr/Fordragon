@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use log::{debug, error, info};
 use tokio::net::UdpSocket;
 
 use crate::server::{packets::packet::Packet, server::Server, state::ticker::TickerTrait};
@@ -43,7 +44,7 @@ impl ServerPacketSender {
 
 impl PacketSender for ServerPacketSender {
     fn try_register(&mut self, addr: SocketAddr) {
-        println!("Registering address {:?}", addr);
+        debug!("Registering address {:?}", addr);
 
         let mut state = self.state.lock().unwrap();
 
@@ -53,11 +54,11 @@ impl PacketSender for ServerPacketSender {
     }
 
     fn send(&self, packet: Packet, addr: SocketAddr) {
-        println!("Sending packet to {:?}", addr);
+        debug!("Sending packet to {:?}", addr);
     }
 
     fn initialise(&mut self, socket: Arc<UdpSocket>) {
-        println!("Initialising packet sender");
+        info!("Initialising packet sender");
 
         let mut state = self.state.lock().unwrap();
 
@@ -80,7 +81,7 @@ impl PacketSender for ServerPacketSender {
             (packets, connections, socket)
         };
 
-        println!("Emiting {:?} packets", packets.len());
+        debug!("Emiting {:?} packets", packets.len());
 
         tokio::spawn(async move {
             use futures::future::join_all;
@@ -91,7 +92,7 @@ impl PacketSender for ServerPacketSender {
                 let bytes = match serde_json::to_vec(&packet) {
                     Ok(b) => b,
                     Err(e) => {
-                        eprintln!("Failed to serialize packet: {:?}", e);
+                        error!("Failed to serialize packet: {:?}", e);
                         continue;
                     }
                 };
@@ -103,7 +104,7 @@ impl PacketSender for ServerPacketSender {
 
                     let fut = async move {
                         if let Err(e) = socket.send_to(&bytes, &*addr).await {
-                            eprintln!("Failed to send packet: {:?}", e);
+                            error!("Failed to send packet: {:?}", e);
                         }
                     };
                     send_futures.push(fut);

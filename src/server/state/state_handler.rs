@@ -1,4 +1,5 @@
 use bevy_ecs::{schedule::Schedule, world::World};
+use log::{debug, info};
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
@@ -36,7 +37,7 @@ impl StateHandler for ServerStateHandler {
         let world = self.world.clone();
         let schedule = self.schedule.clone();
 
-        println!("Starting server state handler");
+        info!("Starting server state handler");
 
         world
             .write()
@@ -56,10 +57,10 @@ impl StateHandler for ServerStateHandler {
         self.ticker.lock().unwrap().register(Box::new(move || {
             let mut world = world.write().unwrap();
             let mut schedule = schedule.lock().unwrap();
-            println!("Running schedule");
+            debug!("Running schedule");
             let now = std::time::Instant::now();
             schedule.run(&mut world);
-            println!("Schedule run complete in: {:?}", now.elapsed().as_millis());
+            debug!("Schedule run complete in: {:?}", now.elapsed().as_millis());
         }));
 
         self.ticker.lock().unwrap().run();

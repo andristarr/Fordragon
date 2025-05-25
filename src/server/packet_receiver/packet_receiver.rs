@@ -1,3 +1,5 @@
+use log::{debug, warn};
+
 use crate::server::components::position::Position;
 use crate::server::components::shared::vec3d::Vec3d;
 use crate::server::opcode::OpCode;
@@ -110,7 +112,7 @@ impl PacketReceiver for ServerPacketReceiver {
                 .insert(addr, packet.id);
         } else {
             if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet.id {
-                println!("Packet loss detected, dropping packet...");
+                warn!("Packet loss detected, dropping packet...");
                 return;
             } else {
                 self.state
@@ -178,7 +180,7 @@ impl PacketReceiver for ServerPacketReceiver {
         let state = self.state.clone();
 
         self.ticker.lock().unwrap().register(Box::new(move || {
-            println!("Injecting packets...");
+            debug!("Injecting packets...");
 
             ServerPacketReceiver::inject_packets(state.clone());
         }));

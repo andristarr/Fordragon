@@ -3,6 +3,7 @@ use bevy_ecs::{
     query::With,
     system::{Query, ResMut},
 };
+use log::debug;
 
 use crate::server::components::{position::Position, shared::vec3d::Vec3d};
 
@@ -12,7 +13,7 @@ pub fn trivival_move_system(
     mut query: Query<(Entity, &mut Position), With<Position>>,
     mut movement_commands: ResMut<CommandContainer<Vec3d>>,
 ) {
-    println!(
+    debug!(
         "Running trivial move system for {:?} number of entities",
         query.iter().count()
     );

@@ -14,6 +14,17 @@ mod server;
 
 #[tokio::main]
 async fn main() {
+    let mut log_builder = colog::basic_builder();
+
+    log_builder
+        .filter_level(log::LevelFilter::Debug)
+        .format_timestamp_millis()
+        .format_module_path(false)
+        .format_target(false)
+        .format_indent(Some(2));
+
+    log_builder.init();
+
     let ticker = Ticker::new(8);
 
     let ticker = Arc::new(Mutex::new(ticker));

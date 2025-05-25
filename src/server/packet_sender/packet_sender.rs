@@ -16,9 +16,9 @@ pub struct ServerPacketSenderState {
 }
 
 // this is the trivial implementation where everything gets broadcasted to everyone
-pub trait PacketSender {
+pub trait PacketSender: Send + Sync {
     fn try_register(&mut self, addr: SocketAddr);
-    fn send(&self, packet: Packet, addr: SocketAddr);
+    fn enqueue(&self, packet: Packet);
     fn initialise(&mut self, socket: Arc<UdpSocket>);
     fn emit_packets(state: Arc<Mutex<ServerPacketSenderState>>);
 }
@@ -53,8 +53,11 @@ impl PacketSender for ServerPacketSender {
         }
     }
 
-    fn send(&self, packet: Packet, addr: SocketAddr) {
-        debug!("Sending packet to {:?}", addr);
+    fn enqueue(&self, packet: Packet) {
+        debug!("Sending packet {:?}", packet);
+
+        let mut state = self.state.lock().unwrap();
+        state.packets.push(packet);
     }
 
     fn initialise(&mut self, socket: Arc<UdpSocket>) {

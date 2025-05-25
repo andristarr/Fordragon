@@ -2,9 +2,11 @@
 
 use std::sync::{Arc, Mutex};
 
+use common::config::Config;
 use server::{
     packet_receiver::builder::ServerPacketReceiverBuilder,
     packet_sender::builder::ServerPacketSenderBuilder,
+    packets::packet,
     server::Server,
     state::{state_handler::ServerStateHandler, ticker::Ticker},
 };
@@ -14,25 +16,24 @@ mod server;
 
 #[tokio::main]
 async fn main() {
-    let mut log_builder = colog::basic_builder();
-
-    log_builder
-        .filter_level(log::LevelFilter::Debug)
+    env_logger::Builder::from_default_env()
         .format_timestamp_millis()
-        .format_module_path(false)
-        .format_target(false)
-        .format_indent(Some(2));
+        .filter_level(log::LevelFilter::Debug)
+        .init();
 
-    log_builder.init();
+    let config = Config::get().unwrap();
 
-    let ticker = Ticker::new(8);
+    let ticker = Ticker::new(config.tick_count);
 
     let ticker = Arc::new(Mutex::new(ticker));
 
-    let state_handler = ServerStateHandler::new(ticker.clone());
+    let packet_sender = ServerPacketSenderBuilder::build(ticker.clone());
+
+    let packet_sender = Arc::new(Mutex::new(packet_sender));
+
+    let state_handler = ServerStateHandler::new(ticker.clone(), packet_sender.clone());
 
     let packet_receiver = ServerPacketReceiverBuilder::build(state_handler, ticker.clone());
-    let packet_sender = ServerPacketSenderBuilder::build(ticker.clone());
 
     let mut server = Server::new(packet_receiver, packet_sender);
 

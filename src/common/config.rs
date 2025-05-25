@@ -6,7 +6,7 @@ use std::{env, fs};
 pub struct Config {
     pub db_uri: String,
     pub db_name: String,
-    pub tick_count: u64,
+    pub tick_count: u8,
 }
 
 impl Config {

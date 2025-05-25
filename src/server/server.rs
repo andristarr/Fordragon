@@ -2,19 +2,19 @@ use crate::server::packet_receiver::packet_receiver::PacketReceiver;
 use crate::server::packets::packet::Packet;
 use anyhow::Result;
 use log::{debug, info};
-use std::net::SocketAddr;
 use std::sync::Arc;
+use std::{net::SocketAddr, sync::Mutex};
 use tokio::{net::UdpSocket, sync::mpsc};
 
-use super::packet_sender::packet_sender::PacketSender;
+use super::packet_sender::packet_sender::{PacketSender, ServerPacketSender};
 
-pub struct Server<T: PacketReceiver, U: PacketSender> {
+pub struct Server<T: PacketReceiver> {
     packet_receiver: T,
-    packet_sender: U,
+    packet_sender: Arc<Mutex<ServerPacketSender>>,
 }
 
-impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
-    pub fn new(mut packet_receiver: T, mut packet_sender: U) -> Self {
+impl<T: PacketReceiver> Server<T> {
+    pub fn new(mut packet_receiver: T, packet_sender: Arc<Mutex<ServerPacketSender>>) -> Self {
         packet_receiver.initialise();
 
         Server {
@@ -32,7 +32,10 @@ impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
         let sender = receiver.clone();
         let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
-        self.packet_sender.initialise(sender.clone());
+        self.packet_sender
+            .lock()
+            .unwrap()
+            .initialise(sender.clone());
 
         tokio::spawn(async move {
             // sender
@@ -55,7 +58,7 @@ impl<T: PacketReceiver, U: PacketSender> Server<T, U> {
             let packet: Packet = serde_json::from_str::<Packet>(as_str).unwrap();
 
             self.packet_receiver.consume(packet, addr);
-            self.packet_sender.try_register(addr);
+            self.packet_sender.lock().unwrap().try_register(addr);
 
             counter += 1;
         }

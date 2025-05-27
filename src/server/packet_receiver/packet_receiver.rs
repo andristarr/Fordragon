@@ -3,9 +3,11 @@ use log::{debug, warn};
 use crate::server::components::position::Position;
 use crate::server::components::shared::vec3d::Vec3d;
 use crate::server::opcode::OpCode;
+use crate::server::packet_handler::packet_handler::{PacketHandler, PacketHandlerTrait};
 use crate::server::packets::move_packet::MovePacket;
-use crate::server::packets::packet::Packet;
+use crate::server::packets::packet::{self, Packet};
 use crate::server::packets::spawn_packet::SpawnPacket;
+use crate::server::state;
 use crate::server::state::state_handler::{ServerStateHandler, StateHandler};
 use crate::server::state::ticker::TickerTrait;
 use crate::server::systems::command_container::CommandContainer;
@@ -16,17 +18,20 @@ use std::sync::{Arc, Mutex};
 pub trait PacketReceiver {
     fn consume(&self, packet: Packet, addr: SocketAddr);
     fn initialise(&mut self);
-    fn inject_packets(handler: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>);
+    fn inject_packets(
+        packet_handler: Arc<Mutex<dyn PacketHandlerTrait>>,
+        state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
+    );
 }
 
 pub struct ServerPacketReceiver {
     ticker: Arc<Mutex<dyn TickerTrait>>,
     state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
+    packet_handler: Arc<Mutex<dyn PacketHandlerTrait>>,
 }
 
 pub struct ServerPacketReceiverState<T: StateHandler> {
     pub(super) state_handler: T,
-    packets: HashMap<OpCode, Vec<Packet>>,
     connections: HashMap<SocketAddr, u128>,
 }
 
@@ -34,73 +39,34 @@ impl ServerPacketReceiver {
     pub fn new(state_handler: ServerStateHandler, ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
         let state = ServerPacketReceiverState {
             state_handler,
-            packets: HashMap::new(),
             connections: HashMap::new(),
         };
 
         let state = Arc::new(Mutex::new(state));
 
-        ServerPacketReceiver { ticker, state }
+        ServerPacketReceiver {
+            ticker,
+            state,
+            packet_handler: Arc::new(Mutex::new(PacketHandler::new())),
+        }
     }
 }
 
 impl PacketReceiver for ServerPacketReceiver {
-    fn inject_packets(state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>) {
-        let world = state.lock().unwrap().state_handler.get_world();
-
-        for (opcode, packets) in state.lock().unwrap().packets.iter() {
-            for packet in packets {
-                match opcode {
-                    OpCode::Movement => {
-                        // TODO probably an incredibly huge bottleneck
-
-                        let mut world = world.write().unwrap();
-
-                        let mut res = world.resource_mut::<CommandContainer<Vec3d>>();
-
-                        let packet_data = serde_json::from_str::<MovePacket>(&packet.data).unwrap();
-
-                        match res.entries.get_mut(&packet_data.entity) {
-                            Some(queue) => {
-                                queue.push_back(packet_data.vector);
-                            }
-                            None => {
-                                let mut queue: VecDeque<Vec3d> = VecDeque::new();
-
-                                queue.push_back(packet_data.vector);
-
-                                res.entries.insert(packet_data.entity, queue);
-                            }
-                        }
-                    }
-                    OpCode::Spawn => {
-                        let mut world = world.write().unwrap();
-
-                        let packet_data =
-                            serde_json::from_str::<SpawnPacket>(&packet.data).unwrap();
-
-                        for _ in 0..1000 {
-                            let entity = world
-                                .spawn(Position {
-                                    position: Vec3d {
-                                        x: packet_data.location.x,
-                                        y: packet_data.location.y,
-                                        z: packet_data.location.z,
-                                    },
-                                })
-                                .id();
-
-                            let mut res = world.resource_mut::<CommandContainer<Vec3d>>();
-
-                            res.entries.insert(entity, VecDeque::new());
-                        }
-                    }
-                    _ => panic!("Unknown opcode"),
-                }
-            }
-        }
-
-        state.lock().unwrap().packets.clear();
+    fn inject_packets(
+        packet_handler: Arc<Mutex<dyn PacketHandlerTrait>>,
+        state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
+    ) {
+        packet_handler
+            .lock()
+            .expect(("Failed to lock packet handler"))
+            .transform_state(
+                state
+                    .lock()
+                    .expect("Failed to lock packet receiver state")
+                    .state_handler
+                    .get_world(),
+            );
     }
 
     fn consume(&self, packet: Packet, addr: SocketAddr) {
@@ -109,9 +75,10 @@ impl PacketReceiver for ServerPacketReceiver {
                 .lock()
                 .unwrap()
                 .connections
-                .insert(addr, packet.id);
+                .insert(addr, packet.id.unwrap_or(0));
         } else {
-            if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet.id {
+            if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet.id.unwrap_or(0)
+            {
                 warn!("Packet loss detected, dropping packet...");
                 return;
             } else {
@@ -119,70 +86,24 @@ impl PacketReceiver for ServerPacketReceiver {
                     .lock()
                     .unwrap()
                     .connections
-                    .insert(addr, packet.id);
+                    .insert(addr, packet.id.unwrap_or(0));
             }
         }
 
-        match packet.opcode {
-            OpCode::Movement => {
-                if self
-                    .state
-                    .lock()
-                    .unwrap()
-                    .packets
-                    .get(&OpCode::Movement)
-                    .is_some()
-                {
-                    self.state
-                        .lock()
-                        .unwrap()
-                        .packets
-                        .get_mut(&OpCode::Movement)
-                        .unwrap()
-                        .push(packet);
-                } else {
-                    self.state
-                        .lock()
-                        .unwrap()
-                        .packets
-                        .insert(OpCode::Movement, vec![packet]);
-                }
-            }
-            OpCode::Auth => todo!(),
-            OpCode::Spawn => {
-                if self
-                    .state
-                    .lock()
-                    .unwrap()
-                    .packets
-                    .get(&OpCode::Spawn)
-                    .is_some()
-                {
-                    self.state
-                        .lock()
-                        .unwrap()
-                        .packets
-                        .get_mut(&OpCode::Spawn)
-                        .unwrap()
-                        .push(packet);
-                } else {
-                    self.state
-                        .lock()
-                        .unwrap()
-                        .packets
-                        .insert(OpCode::Spawn, vec![packet]);
-                }
-            }
-        }
+        self.packet_handler
+            .lock()
+            .expect("Failed to lock packet handler")
+            .handle_packet(packet);
     }
 
     fn initialise(&mut self) {
         let state = self.state.clone();
+        let packet_handler = self.packet_handler.clone();
 
         self.ticker.lock().unwrap().register(Box::new(move || {
             debug!("Injecting packets...");
 
-            ServerPacketReceiver::inject_packets(state.clone());
+            ServerPacketReceiver::inject_packets(packet_handler.clone(), state.clone());
         }));
 
         self.state.lock().unwrap().state_handler.start();

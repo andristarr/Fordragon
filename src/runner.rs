@@ -8,7 +8,11 @@ use server::{
     packet_sender::builder::ServerPacketSenderBuilder,
     packets::packet,
     server::Server,
-    state::{state_handler::ServerStateHandler, ticker::Ticker},
+    state::{
+        packet_id_generator::{self, PacketIdGenerator},
+        state_handler::ServerStateHandler,
+        ticker::Ticker,
+    },
 };
 
 mod common;
@@ -18,7 +22,7 @@ mod server;
 async fn main() {
     env_logger::Builder::from_default_env()
         .format_timestamp_millis()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Info)
         .init();
 
     let config = Config::get().unwrap();
@@ -27,7 +31,12 @@ async fn main() {
 
     let ticker = Arc::new(Mutex::new(ticker));
 
-    let packet_sender = ServerPacketSenderBuilder::build(ticker.clone());
+    let packet_id_generator = PacketIdGenerator::new();
+
+    let packet_id_generator = Arc::new(Mutex::new(packet_id_generator));
+
+    let packet_sender =
+        ServerPacketSenderBuilder::build(ticker.clone(), packet_id_generator.clone());
 
     let packet_sender = Arc::new(Mutex::new(packet_sender));
 

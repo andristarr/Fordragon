@@ -7,3 +7,9 @@ pub struct MovePacket {
     pub entity: Entity,
     pub vector: Vec3d,
 }
+
+impl MovePacket {
+    pub fn new(entity: Entity, vector: Vec3d) -> Self {
+        MovePacket { entity, vector }
+    }
+}

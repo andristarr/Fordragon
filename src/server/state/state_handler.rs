@@ -2,20 +2,21 @@ use bevy_ecs::{
     schedule::Schedule,
     world::{self, World},
 };
-use log::{debug, info};
+use log::{debug, info, trace};
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
+    commands::move_command::MoveCommand,
     components::shared::{self, vec3d::Vec3d},
     packet_sender::packet_sender::{PacketSender, ServerPacketSender, ServerPacketSenderState},
-    packets::{self, packet::Packet},
+    packets::{self, move_packet::MovePacket, packet::Packet},
     systems::{
         self,
         command_container::{self, CommandContainer},
     },
 };
 
-use super::ticker::TickerTrait;
+use super::{packet_id_generator::PacketIdGenerator, ticker::TickerTrait};
 
 pub trait StateHandler {
     fn start(&mut self);
@@ -55,7 +56,7 @@ impl StateHandler for ServerStateHandler {
         world
             .write()
             .unwrap()
-            .insert_resource(CommandContainer::<Vec3d> {
+            .insert_resource(CommandContainer::<MoveCommand> {
                 entries: Default::default(),
             });
 
@@ -71,27 +72,51 @@ impl StateHandler for ServerStateHandler {
         let shared_sender = self.sender.clone();
 
         self.ticker.lock().unwrap().register(Box::new(move || {
-            let mut world = shared_world.write().unwrap();
-
-            let command_container = world
-                .resource_mut::<CommandContainer<Vec3d>>()
-                .entries
-                .clone();
-
-            debug!(
-                "Enqueuing packets from {} commands",
-                command_container.len()
-            );
+            let mut world = shared_world
+                .write()
+                .expect("Failed to get write lock to world");
 
             // map commands to packets from world resources
             // TODO correctly map here
+            debug!(
+                "Enqueuing packets from {:?} move commands",
+                world
+                    .resource_mut::<CommandContainer<MoveCommand>>()
+                    .entries
+            );
 
-            shared_sender.lock().unwrap().enqueue(Packet {
-                id: 0,
-                opcode: crate::server::opcode::OpCode::Spawn,
-                data: "".to_string(),
-            });
-            debug!("Done enqueing packets");
+            let sender = shared_sender.lock().expect("Failed to lock sender");
+
+            for command in world
+                .resource_mut::<CommandContainer<MoveCommand>>()
+                .entries
+                .iter_mut()
+            {
+                trace!("Processing command: {:?}", command);
+                let cmds = command.1.drain(..).collect::<Vec<MoveCommand>>();
+
+                for cmd in cmds {
+                    let packet = Packet {
+                        id: None,
+                        opcode: crate::server::opcode::OpCode::Movement,
+                        data: serde_json::to_string(&MovePacket::new(
+                            cmd.entity,
+                            Vec3d {
+                                x: cmd.x,
+                                y: cmd.y,
+                                z: cmd.z,
+                            },
+                        ))
+                        .expect("Failed to serialize MoveCommand"),
+                    };
+
+                    trace!("Enqueuing packet: {:?}", packet);
+
+                    sender.enqueue(packet);
+                }
+            }
+
+            trace!("Done enqueing packets");
         }));
 
         self.ticker.lock().unwrap().register(Box::new(move || {

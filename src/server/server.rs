@@ -30,28 +30,24 @@ impl<T: PacketReceiver> Server<T> {
 
         let receiver = Arc::new(sock);
         let sender = receiver.clone();
-        let (_tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
         self.packet_sender
             .lock()
             .unwrap()
             .initialise(sender.clone());
 
-        tokio::spawn(async move {
-            // sender
-            while let Some((bytes, addr)) = rx.recv().await {
-                let len = sender.send_to(&bytes, &addr).await.unwrap();
-                debug!("{:?} bytes sent", len);
-            }
-        });
-
         let mut buf = [0; 4096];
-
-        let mut counter = 0;
 
         loop {
             // receiver
-            let (len, addr) = receiver.recv_from(&mut buf).await?;
+            let rec = receiver.recv_from(&mut buf).await;
+
+            if let Err(e) = rec {
+                debug!("Error receiving packet: {:?}", e);
+                continue;
+            }
+
+            let (len, addr) = rec?;
 
             let as_str = std::str::from_utf8(&buf[..len]).unwrap();
 
@@ -59,8 +55,6 @@ impl<T: PacketReceiver> Server<T> {
 
             self.packet_receiver.consume(packet, addr);
             self.packet_sender.lock().unwrap().try_register(addr);
-
-            counter += 1;
         }
     }
 }

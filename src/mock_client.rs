@@ -16,9 +16,10 @@ impl MockClient {
     pub async fn run(&mut self) -> Result<()> {
         let sock = UdpSocket::bind("0.0.0.0:0".parse::<SocketAddr>()?).await?;
 
+        println!("Mock client started on {:?}", sock.local_addr()?);
+
         let receiver = Arc::new(sock);
         let sender = receiver.clone();
-        let (_tx, rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
         let mut packet_id = 0;
 
@@ -44,7 +45,7 @@ impl MockClient {
 
                 for packet in spawn_packets {
                     let packet = serde_json::to_string(&Packet {
-                        id: packet_id,
+                        id: Some(packet_id),
                         opcode: server::opcode::OpCode::Spawn,
                         data: serde_json::to_string(&packet).unwrap(),
                     })
@@ -72,9 +73,7 @@ impl MockClient {
             println!("{:?} bytes received from {:?}", len, addr);
 
             let packet =
-                serde_json::from_str::<Packet>(std::str::from_utf8(&buf).unwrap()).unwrap();
-
-            println!("Received: {:?}", packet);
+                serde_json::from_str::<Packet>(std::str::from_utf8(&buf[..len]).unwrap()).unwrap();
         }
     }
 }

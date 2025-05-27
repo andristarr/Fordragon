@@ -30,7 +30,7 @@ impl SpawnPacketHandler {
 
 impl PacketHandlerTrait for SpawnPacketHandler {
     fn handle_packet(&mut self, packet: Packet) {
-        debug!("Handling spawn packet: {:?}", packet);
+        trace!("Handling spawn packet: {:?}", packet);
 
         self.packets.push(packet);
     }
@@ -50,7 +50,7 @@ impl PacketHandlerTrait for SpawnPacketHandler {
                 .expect("Failed to deserialize SpawnPacket");
 
             // TODO simulating spawning X amount of entities instead of one
-            for _ in 0..10 {
+            for _ in 0..1000 {
                 let entity = world
                     .spawn(Position {
                         position: Vec3d::new(

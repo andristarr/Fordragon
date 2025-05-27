@@ -72,6 +72,16 @@ impl StateHandler for ServerStateHandler {
         let shared_sender = self.sender.clone();
 
         self.ticker.lock().unwrap().register(Box::new(move || {
+            let mut world = world.write().unwrap();
+            let mut schedule = schedule.lock().unwrap();
+
+            debug!("Running schedule");
+            let now = std::time::Instant::now();
+            schedule.run(&mut world);
+            debug!("Schedule run complete in: {:?}", now.elapsed().as_millis());
+        }));
+
+        self.ticker.lock().unwrap().register(Box::new(move || {
             let mut world = shared_world
                 .write()
                 .expect("Failed to get write lock to world");
@@ -83,6 +93,7 @@ impl StateHandler for ServerStateHandler {
                 world
                     .resource_mut::<CommandContainer<MoveCommand>>()
                     .entries
+                    .len()
             );
 
             let sender = shared_sender.lock().expect("Failed to lock sender");
@@ -116,17 +127,12 @@ impl StateHandler for ServerStateHandler {
                 }
             }
 
+            world
+                .resource_mut::<CommandContainer<MoveCommand>>()
+                .entries
+                .clear();
+
             trace!("Done enqueing packets");
-        }));
-
-        self.ticker.lock().unwrap().register(Box::new(move || {
-            let mut world = world.write().unwrap();
-            let mut schedule = schedule.lock().unwrap();
-
-            debug!("Running schedule");
-            let now = std::time::Instant::now();
-            schedule.run(&mut world);
-            debug!("Schedule run complete in: {:?}", now.elapsed().as_millis());
         }));
 
         self.ticker.lock().unwrap().run();

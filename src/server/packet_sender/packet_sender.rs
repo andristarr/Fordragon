@@ -123,6 +123,9 @@ impl PacketSender for ServerPacketSender {
 
             let mut send_futures = vec![];
 
+            let total_packets_sent = packets.len() * connections.len();
+            debug!("Total packets to send: {}", total_packets_sent);
+
             for packet in packets.iter_mut() {
                 let bytes = match serde_json::to_vec(&packet) {
                     Ok(b) => b,

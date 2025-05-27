@@ -37,7 +37,7 @@ impl PacketHandler {
     }
 
     pub fn handle_packet(&mut self, packet: Packet) {
-        debug!("Handling packet: {:?}", packet);
+        debug!("Handling packet: {:?}", packet.opcode);
 
         if let Some(handler) = self.handlers.get_mut(&packet.opcode) {
             handler.handle_packet(packet);

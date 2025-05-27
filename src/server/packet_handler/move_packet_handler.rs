@@ -26,7 +26,7 @@ impl MovePacketHandler {
 
 impl PacketHandlerTrait for MovePacketHandler {
     fn handle_packet(&mut self, packet: Packet) {
-        debug!("Handling move packet: {:?}", packet);
+        trace!("Handling move packet: {:?}", packet);
 
         self.packets.push(packet);
     }

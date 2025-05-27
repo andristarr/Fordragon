@@ -84,6 +84,7 @@ impl StateHandler for ServerStateHandler {
             );
 
             // map commands to packets from world resources
+            // TODO correctly map here
 
             shared_sender.lock().unwrap().enqueue(Packet {
                 id: 0,

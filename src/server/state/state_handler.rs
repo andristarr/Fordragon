@@ -1,5 +1,5 @@
 use bevy_ecs::{
-    schedule::Schedule,
+    schedule::{IntoSystemConfigs, Schedule},
     world::{self, World},
 };
 use log::{debug, info, trace};
@@ -62,11 +62,14 @@ impl StateHandler for ServerStateHandler {
 
         // system registrations here for now, should be in their own schedules
         // no meaningful systems yet, this is just to stress test, it seems around 300k entities it starts to slow down for the targeted 8/s tickrate
-        schedule
-            .lock()
-            .unwrap()
-            .add_systems(systems::movement::movement_system)
-            .add_systems(systems::trivial_move::trivival_move_system);
+
+        let trivival_move_system = systems::trivial_move::trivival_move_system;
+        let movement_system = systems::movement::movement_system;
+
+        schedule.lock().unwrap().add_systems((
+            trivival_move_system,
+            movement_system.before(trivival_move_system),
+        ));
 
         let shared_world = self.world.clone();
         let shared_sender = self.sender.clone();
@@ -130,7 +133,10 @@ impl StateHandler for ServerStateHandler {
             world
                 .resource_mut::<CommandContainer<MoveCommand>>()
                 .entries
-                .clear();
+                .iter_mut()
+                .for_each(|(_, queue)| {
+                    queue.clear();
+                });
 
             trace!("Done enqueing packets");
         }));

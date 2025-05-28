@@ -4,10 +4,7 @@ use bevy_ecs::{
     system::{Query, ResMut},
 };
 
-use crate::server::{
-    commands::move_command::MoveCommand,
-    components::{position::Position, shared::vec3d::Vec3d},
-};
+use crate::server::{commands::move_command::MoveCommand, components::position::Position};
 
 use super::command_container::CommandContainer;
 

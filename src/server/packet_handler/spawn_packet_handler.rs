@@ -61,6 +61,8 @@ impl PacketHandlerTrait for SpawnPacketHandler {
                     })
                     .id();
 
+                trace!("Spawning entity: {:?}", entity);
+
                 let mut res = world.resource_mut::<CommandContainer<MoveCommand>>();
 
                 res.entries.insert(entity, VecDeque::new());

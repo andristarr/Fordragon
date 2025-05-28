@@ -26,4 +26,9 @@ pub fn trivival_move_system(
             commands.push_back(MoveCommand::new(entity, 1.0, 0.0, 0.0));
         }
     }
+
+    trace!(
+        "Finished trivial move system, movement_commands contains {:?} entries",
+        movement_commands.entries.len()
+    );
 }

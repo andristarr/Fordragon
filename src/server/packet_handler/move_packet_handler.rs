@@ -69,6 +69,7 @@ impl PacketHandlerTrait for MovePacketHandler {
                 }
             }
         }
+
         self.packets.clear();
     }
 }

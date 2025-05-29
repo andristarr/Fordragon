@@ -1,42 +1,35 @@
 use log::{debug, warn};
 
-use crate::server::components::position::Position;
-use crate::server::components::shared::vec3d::Vec3d;
-use crate::server::opcode::OpCode;
 use crate::server::packet_handler::packet_handler::{PacketHandler, PacketHandlerTrait};
-use crate::server::packets::move_packet::MovePacket;
-use crate::server::packets::packet::{self, Packet};
-use crate::server::packets::spawn_packet::SpawnPacket;
-use crate::server::state;
-use crate::server::state::state_handler::{ServerStateHandler, StateHandler};
+use crate::server::packets::packet::Packet;
+use crate::server::state::state_handler::StateHandler;
 use crate::server::state::ticker::TickerTrait;
-use crate::server::systems::command_container::CommandContainer;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
-pub trait PacketReceiver {
+pub trait PacketReceiver: Send + Sync {
     fn consume(&self, packet: Packet, addr: SocketAddr);
     fn initialise(&mut self);
     fn inject_packets(
         packet_handler: Arc<Mutex<dyn PacketHandlerTrait>>,
-        state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
+        state: Arc<Mutex<ServerPacketReceiverState>>,
     );
 }
 
 pub struct ServerPacketReceiver {
     ticker: Arc<Mutex<dyn TickerTrait>>,
-    state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
+    state: Arc<Mutex<ServerPacketReceiverState>>,
     packet_handler: Arc<Mutex<dyn PacketHandlerTrait>>,
 }
 
-pub struct ServerPacketReceiverState<T: StateHandler> {
-    pub(super) state_handler: T,
+pub struct ServerPacketReceiverState {
+    pub(super) state_handler: Box<dyn StateHandler>,
     connections: HashMap<SocketAddr, u128>,
 }
 
 impl ServerPacketReceiver {
-    pub fn new(state_handler: ServerStateHandler, ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
+    pub fn new(state_handler: Box<dyn StateHandler>, ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
         let state = ServerPacketReceiverState {
             state_handler,
             connections: HashMap::new(),
@@ -55,7 +48,7 @@ impl ServerPacketReceiver {
 impl PacketReceiver for ServerPacketReceiver {
     fn inject_packets(
         packet_handler: Arc<Mutex<dyn PacketHandlerTrait>>,
-        state: Arc<Mutex<ServerPacketReceiverState<ServerStateHandler>>>,
+        state: Arc<Mutex<ServerPacketReceiverState>>,
     ) {
         packet_handler
             .lock()

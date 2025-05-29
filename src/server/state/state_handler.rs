@@ -1,24 +1,21 @@
 use bevy_ecs::{
     schedule::{IntoSystemConfigs, Schedule},
-    world::{self, World},
+    world::World,
 };
 use log::{debug, info, trace};
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
     commands::move_command::MoveCommand,
-    components::shared::{self, vec3d::Vec3d},
-    packet_sender::packet_sender::{PacketSender, ServerPacketSender, ServerPacketSenderState},
-    packets::{self, move_packet::MovePacket, packet::Packet},
-    systems::{
-        self,
-        command_container::{self, CommandContainer},
-    },
+    components::shared::vec3d::Vec3d,
+    packet_sender::packet_sender::{PacketSender, ServerPacketSender},
+    packets::{move_packet::MovePacket, packet::Packet},
+    systems::{self, command_container::CommandContainer},
 };
 
-use super::{packet_id_generator::PacketIdGenerator, ticker::TickerTrait};
+use super::ticker::TickerTrait;
 
-pub trait StateHandler {
+pub trait StateHandler: Send + Sync {
     fn start(&mut self);
     fn get_world(&self) -> Arc<RwLock<World>>;
 }

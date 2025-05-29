@@ -4,17 +4,21 @@ use anyhow::Result;
 use log::{debug, info};
 use std::sync::Arc;
 use std::{net::SocketAddr, sync::Mutex};
-use tokio::{net::UdpSocket, sync::mpsc};
+use tokio::net::UdpSocket;
 
+use super::packet_receiver::packet_receiver::ServerPacketReceiver;
 use super::packet_sender::packet_sender::{PacketSender, ServerPacketSender};
 
-pub struct Server<T: PacketReceiver> {
-    packet_receiver: T,
+pub struct Server {
+    packet_receiver: Box<ServerPacketReceiver>,
     packet_sender: Arc<Mutex<ServerPacketSender>>,
 }
 
-impl<T: PacketReceiver> Server<T> {
-    pub fn new(mut packet_receiver: T, packet_sender: Arc<Mutex<ServerPacketSender>>) -> Self {
+impl Server {
+    pub fn new(
+        mut packet_receiver: Box<ServerPacketReceiver>,
+        packet_sender: Arc<Mutex<ServerPacketSender>>,
+    ) -> Self {
         packet_receiver.initialise();
 
         Server {

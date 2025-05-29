@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    hash::Hash,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
@@ -9,8 +8,7 @@ use log::{debug, error, info, trace};
 use tokio::{io::Interest, net::UdpSocket};
 
 use crate::server::{
-    packets::packet::{self, Packet},
-    server::Server,
+    packets::packet::Packet,
     state::{packet_id_generator::PacketIdGenerator, ticker::TickerTrait},
 };
 

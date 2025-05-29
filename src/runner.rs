@@ -6,12 +6,9 @@ use common::config::Config;
 use server::{
     packet_receiver::builder::ServerPacketReceiverBuilder,
     packet_sender::builder::ServerPacketSenderBuilder,
-    packets::packet,
     server::Server,
     state::{
-        packet_id_generator::{self, PacketIdGenerator},
-        state_handler::ServerStateHandler,
-        ticker::Ticker,
+        packet_id_generator::PacketIdGenerator, state_handler::ServerStateHandler, ticker::Ticker,
     },
 };
 
@@ -42,9 +39,10 @@ async fn main() {
 
     let state_handler = ServerStateHandler::new(ticker.clone(), packet_sender.clone());
 
-    let packet_receiver = ServerPacketReceiverBuilder::build(state_handler, ticker.clone());
+    let packet_receiver =
+        ServerPacketReceiverBuilder::build(Box::new(state_handler), ticker.clone());
 
-    let mut server = Server::new(packet_receiver, packet_sender);
+    let mut server = Server::new(Box::new(packet_receiver), packet_sender);
 
     let _ = server.run().await;
 }

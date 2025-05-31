@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::server::opcode::OpCode;
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct Packet {
     pub id: Option<u128>,
     pub opcode: OpCode,

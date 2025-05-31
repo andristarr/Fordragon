@@ -166,3 +166,113 @@ impl PacketSender for ServerPacketSender {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{Ipv4Addr, SocketAddr};
+    use std::sync::{Arc, Mutex};
+
+    fn test_addr(port: u16) -> SocketAddr {
+        SocketAddr::from((Ipv4Addr::LOCALHOST, port))
+    }
+
+    #[test]
+    fn test_try_register_adds_new_address() {
+        let ticker = Arc::new(Mutex::new(MockTicker));
+        let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+        let mut sender = ServerPacketSender::new(ticker, packet_id_generator);
+
+        let addr = test_addr(12345);
+
+        {
+            let state = sender.state.lock().unwrap();
+            assert!(!state.connections.contains(&addr));
+        }
+
+        sender.try_register(addr);
+
+        // Address should be present after registration
+        {
+            let state = sender.state.lock().unwrap();
+            assert!(state.connections.contains(&addr));
+        }
+    }
+
+    #[test]
+    fn test_try_register_does_not_duplicate_address() {
+        let ticker = Arc::new(Mutex::new(MockTicker));
+        let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+        let mut sender = ServerPacketSender::new(ticker, packet_id_generator);
+
+        let addr = test_addr(12345);
+
+        sender.try_register(addr);
+        sender.try_register(addr);
+
+        // Address should only be present once
+        {
+            let state = sender.state.lock().unwrap();
+            assert_eq!(state.connections.iter().filter(|&&a| a == addr).count(), 1);
+        }
+    }
+
+    #[cfg(test)]
+    mod enqueue_tests {
+        use crate::server::opcode::OpCode;
+
+        use super::*;
+        use std::sync::{Arc, Mutex};
+
+        #[test]
+        fn test_enqueue_adds_packet_to_state() {
+            let ticker = Arc::new(Mutex::new(super::tests::MockTicker));
+            let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+            let sender = ServerPacketSender::new(ticker, packet_id_generator);
+
+            let packet = Packet {
+                id: Some(1),
+                opcode: OpCode::Spawn,
+                data: "test".to_string(),
+            };
+
+            sender.enqueue(packet.clone());
+
+            let state = sender.state.lock().unwrap();
+            assert_eq!(state.packets.len(), 1);
+            assert_eq!(state.packets[0], packet);
+        }
+
+        #[test]
+        fn test_enqueue_multiple_packets() {
+            let ticker = Arc::new(Mutex::new(super::tests::MockTicker));
+            let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+            let sender = ServerPacketSender::new(ticker, packet_id_generator);
+
+            let packet1 = Packet {
+                id: Some(1),
+                opcode: OpCode::Spawn,
+                data: "first".to_string(),
+            };
+            let packet2 = Packet {
+                id: Some(2),
+                opcode: OpCode::Spawn,
+                data: "second".to_string(),
+            };
+
+            sender.enqueue(packet1.clone());
+            sender.enqueue(packet2.clone());
+
+            let state = sender.state.lock().unwrap();
+            assert_eq!(state.packets.len(), 2);
+            assert_eq!(state.packets[0], packet1);
+            assert_eq!(state.packets[1], packet2);
+        }
+    }
+
+    struct MockTicker;
+    impl TickerTrait for MockTicker {
+        fn register(&mut self, _f: Box<dyn Fn() + Send>) {}
+        fn run(&mut self) {}
+    }
+}

@@ -69,7 +69,9 @@ impl PacketHandlerTrait for MovePacketHandler {
                 }
             }
         }
+    }
 
+    fn clear_packets(&mut self) {
         self.packets.clear();
     }
 }

@@ -121,6 +121,7 @@ mod tests {
     }
     impl PacketHandlerTrait for MockPacketHandler {
         fn handle_packet(&mut self, _packet: Packet) {}
+        fn clear_packets(&mut self) {}
         fn transform_state(&mut self, _world: Arc<RwLock<World>>) {
             *self.called.lock().unwrap() = true;
         }
@@ -170,6 +171,7 @@ mod tests {
             pub called: Arc<Mutex<Option<Packet>>>,
         }
         impl PacketHandlerTrait for MockPacketHandler {
+            fn clear_packets(&mut self) {}
             fn handle_packet(&mut self, packet: Packet) {
                 *self.called.lock().unwrap() = Some(packet);
             }
@@ -304,6 +306,7 @@ mod tests {
 
         struct MockPacketHandler;
         impl PacketHandlerTrait for MockPacketHandler {
+            fn clear_packets(&mut self) {}
             fn handle_packet(&mut self, _packet: Packet) {}
             fn transform_state(&mut self, _world: Arc<RwLock<World>>) {}
         }

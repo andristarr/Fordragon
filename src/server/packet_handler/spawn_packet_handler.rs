@@ -68,7 +68,9 @@ impl PacketHandlerTrait for SpawnPacketHandler {
                 res.entries.insert(entity, VecDeque::new());
             }
         }
+    }
 
+    fn clear_packets(&mut self) {
         self.packets.clear();
     }
 }

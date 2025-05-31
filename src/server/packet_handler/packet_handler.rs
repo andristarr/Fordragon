@@ -13,6 +13,7 @@ use super::{move_packet_handler::MovePacketHandler, spawn_packet_handler::SpawnP
 pub trait PacketHandlerTrait: Send + Sync {
     fn handle_packet(&mut self, packet: Packet);
     fn transform_state(&mut self, world: Arc<RwLock<World>>);
+    fn clear_packets(&mut self);
 }
 
 pub struct PacketHandler {
@@ -58,6 +59,14 @@ impl PacketHandlerTrait for PacketHandler {
     fn transform_state(&mut self, world: Arc<RwLock<World>>) {
         for handler in self.handlers.values_mut() {
             handler.transform_state(world.clone());
+        }
+
+        self.clear_packets();
+    }
+
+    fn clear_packets(&mut self) {
+        for handler in self.handlers.values_mut() {
+            handler.clear_packets();
         }
     }
 }

@@ -1,5 +1,7 @@
 use log::{debug, warn};
 
+use crate::server::packet_handler;
+use crate::server::packet_handler::builder::PacketHandlerBuilder;
 use crate::server::packet_handler::packet_handler::{PacketHandler, PacketHandlerTrait};
 use crate::server::packets::packet::Packet;
 use crate::server::state::state_handler::StateHandler;
@@ -33,10 +35,15 @@ impl ServerPacketReceiver {
 
         let state = Arc::new(Mutex::new(state));
 
+        let packet_handler = PacketHandlerBuilder::new()
+            .with_spawn_handler()
+            .with_move_handler()
+            .build();
+
         ServerPacketReceiver {
             ticker,
             state,
-            packet_handler: Arc::new(Mutex::new(PacketHandler::new())),
+            packet_handler: Arc::new(Mutex::new(packet_handler)),
         }
     }
 
@@ -59,14 +66,15 @@ impl ServerPacketReceiver {
 
 impl PacketReceiver for ServerPacketReceiver {
     fn consume(&self, packet: Packet, addr: SocketAddr) {
+        let packet_id = packet.id.unwrap_or(0);
+
         if self.state.lock().unwrap().connections.get(&addr).is_none() {
             self.state
                 .lock()
                 .unwrap()
                 .connections
-                .insert(addr, packet.id.unwrap_or(0));
-        } else if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet.id.unwrap_or(0)
-        {
+                .insert(addr, packet_id);
+        } else if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet_id {
             warn!("Packet loss detected, dropping packet...");
             return;
         } else {
@@ -74,7 +82,7 @@ impl PacketReceiver for ServerPacketReceiver {
                 .lock()
                 .unwrap()
                 .connections
-                .insert(addr, packet.id.unwrap_or(0));
+                .insert(addr, packet_id);
         }
 
         self.packet_handler

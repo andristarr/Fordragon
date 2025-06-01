@@ -28,14 +28,17 @@ impl MockClient {
                 thread::sleep(Duration::from_millis(1_000));
 
                 // sender
-                let spawn_packets: Vec<SpawnPacket> = std::iter::repeat_n(SpawnPacket {
-                    location: Vec3d {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0,
+                let spawn_packets: Vec<SpawnPacket> = std::iter::repeat_n(
+                    SpawnPacket {
+                        location: Vec3d {
+                            x: 0.0,
+                            y: 0.0,
+                            z: 0.0,
+                        },
+                        spawned_type: "player".to_string(),
                     },
-                    spawned_type: "player".to_string(),
-                }, 10)
+                    10,
+                )
                 .collect();
 
                 println!("Length of packets: {:?}", spawn_packets.len());

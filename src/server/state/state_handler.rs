@@ -60,13 +60,12 @@ impl StateHandler for ServerStateHandler {
         // system registrations here for now, should be in their own schedules
         // no meaningful systems yet, this is just to stress test, it seems around 300k entities it starts to slow down for the targeted 8/s tickrate
 
-        let trivival_move_system = systems::trivial_move::trivival_move_system;
+        // trivival_move_system is not registered for now
+        let _trivival_move_system = systems::trivial_move::trivival_move_system;
+
         let movement_system = systems::movement::movement_system;
 
-        schedule.lock().unwrap().add_systems((
-            trivival_move_system,
-            movement_system.before(trivival_move_system),
-        ));
+        schedule.lock().unwrap().add_systems((movement_system,));
 
         let shared_world = self.world.clone();
         let shared_sender = self.sender.clone();

@@ -5,10 +5,7 @@ use bevy_ecs::{
 };
 use log::trace;
 
-use crate::server::{
-    commands::move_command::MoveCommand,
-    components::position::Position,
-};
+use crate::server::{commands::move_command::MoveCommand, components::position::Position};
 
 use super::command_container::CommandContainer;
 

@@ -9,10 +9,7 @@ use log::{debug, trace};
 use crate::server::{
     commands::move_command::MoveCommand,
     components::{position::Position, shared::vec3d::Vec3d},
-    packets::{
-        packet::{Packet},
-        spawn_packet::SpawnPacket,
-    },
+    packets::{packet::Packet, spawn_packet::SpawnPacket},
     systems::command_container::CommandContainer,
 };
 
@@ -49,24 +46,21 @@ impl PacketHandlerTrait for SpawnPacketHandler {
             let packet_data = serde_json::from_str::<SpawnPacket>(&packet.data)
                 .expect("Failed to deserialize SpawnPacket");
 
-            // TODO simulating spawning X amount of entities instead of one
-            for _ in 0..1000 {
-                let entity = world
-                    .spawn(Position {
-                        position: Vec3d::new(
-                            packet_data.location.x,
-                            packet_data.location.y,
-                            packet_data.location.z,
-                        ),
-                    })
-                    .id();
+            let entity = world
+                .spawn(Position {
+                    position: Vec3d::new(
+                        packet_data.location.x,
+                        packet_data.location.y,
+                        packet_data.location.z,
+                    ),
+                })
+                .id();
 
-                trace!("Spawning entity: {:?}", entity);
+            trace!("Spawning entity: {:?}", entity);
 
-                let mut res = world.resource_mut::<CommandContainer<MoveCommand>>();
+            let mut res = world.resource_mut::<CommandContainer<MoveCommand>>();
 
-                res.entries.insert(entity, VecDeque::new());
-            }
+            res.entries.insert(entity, VecDeque::new());
         }
     }
 

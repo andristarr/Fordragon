@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use common::config::Config;
 use server::{
-    packet_receiver::builder::ServerPacketReceiverBuilder,
+    packet_receiver::packet_receiver::ServerPacketReceiver,
     packet_sender::builder::ServerPacketSenderBuilder,
     server::Server,
     state::{
@@ -39,8 +39,7 @@ async fn main() {
 
     let state_handler = ServerStateHandler::new(ticker.clone(), packet_sender.clone());
 
-    let packet_receiver =
-        ServerPacketReceiverBuilder::build(Box::new(state_handler), ticker.clone());
+    let packet_receiver = ServerPacketReceiver::new(Box::new(state_handler), ticker.clone());
 
     let mut server = Server::new(Box::new(packet_receiver), packet_sender);
 

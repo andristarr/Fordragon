@@ -3,11 +3,11 @@ use bevy_ecs::{
     query::With,
     system::{Query, ResMut},
 };
-use log::{debug, trace};
+use log::trace;
 
 use crate::server::{
     commands::move_command::MoveCommand,
-    components::{position::Position, shared::vec3d::Vec3d},
+    components::position::Position,
 };
 
 use super::command_container::CommandContainer;

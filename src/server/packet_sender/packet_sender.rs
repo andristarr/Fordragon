@@ -140,7 +140,7 @@ impl PacketSender for ServerPacketSender {
                         .generate_id(*addr);
 
                     let socket = socket.clone();
-                    let addr = addr.clone();
+                    let addr = *addr;
                     let bytes = bytes.clone();
 
                     let fut = async move {
@@ -217,6 +217,12 @@ mod tests {
         }
     }
 
+    struct MockTicker;
+    impl TickerTrait for MockTicker {
+        fn register(&mut self, _f: Box<dyn Fn() + Send>) {}
+        fn run(&mut self) {}
+    }
+
     #[cfg(test)]
     mod enqueue_tests {
         use crate::server::opcode::OpCode;
@@ -268,11 +274,5 @@ mod tests {
             assert_eq!(state.packets[0], packet1);
             assert_eq!(state.packets[1], packet2);
         }
-    }
-
-    struct MockTicker;
-    impl TickerTrait for MockTicker {
-        fn register(&mut self, _f: Box<dyn Fn() + Send>) {}
-        fn run(&mut self) {}
     }
 }

@@ -46,7 +46,7 @@ impl ServerPacketReceiver {
     ) {
         packet_handler
             .lock()
-            .expect(("Failed to lock packet handler"))
+            .expect("Failed to lock packet handler")
             .transform_state(
                 state
                     .lock()
@@ -65,18 +65,16 @@ impl PacketReceiver for ServerPacketReceiver {
                 .unwrap()
                 .connections
                 .insert(addr, packet.id.unwrap_or(0));
+        } else if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet.id.unwrap_or(0)
+        {
+            warn!("Packet loss detected, dropping packet...");
+            return;
         } else {
-            if self.state.lock().unwrap().connections.get(&addr).unwrap() > &packet.id.unwrap_or(0)
-            {
-                warn!("Packet loss detected, dropping packet...");
-                return;
-            } else {
-                self.state
-                    .lock()
-                    .unwrap()
-                    .connections
-                    .insert(addr, packet.id.unwrap_or(0));
-            }
+            self.state
+                .lock()
+                .unwrap()
+                .connections
+                .insert(addr, packet.id.unwrap_or(0));
         }
 
         self.packet_handler

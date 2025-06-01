@@ -10,7 +10,7 @@ use crate::server::{
     commands::move_command::MoveCommand,
     components::{position::Position, shared::vec3d::Vec3d},
     packets::{
-        packet::{self, Packet},
+        packet::{Packet},
         spawn_packet::SpawnPacket,
     },
     systems::command_container::CommandContainer,

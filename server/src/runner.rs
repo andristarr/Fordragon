@@ -19,7 +19,7 @@ mod server;
 async fn main() {
     env_logger::Builder::from_default_env()
         .format_timestamp_millis()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Info)
         .init();
 
     let config = Config::get().unwrap();

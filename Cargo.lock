@@ -3,25 +3,6 @@
 version = 4
 
 [[package]]
-name = "Fordragon"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "bevy_ecs",
- "env_logger",
- "futures",
- "log",
- "mongodb",
- "semaphore",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1673,6 +1654,25 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bevy_ecs",
+ "env_logger",
+ "futures",
+ "log",
+ "mongodb",
+ "semaphore",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

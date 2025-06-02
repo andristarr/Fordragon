@@ -17,12 +17,12 @@ mod server;
 
 #[tokio::main]
 async fn main() {
+    let config = Config::get().unwrap();
+
     env_logger::Builder::from_default_env()
         .format_timestamp_millis()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(config.log_level)
         .init();
-
-    let config = Config::get().unwrap();
 
     let ticker = Ticker::new(config.tick_count);
 

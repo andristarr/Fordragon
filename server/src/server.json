@@ -1,5 +1,6 @@
 {
   "db_uri": "mongodb://localhost:27017",
   "db_name": "fordragon",
-  "tick_count": 8
+  "tick_count": 8,
+  "log_level": "info"
 }

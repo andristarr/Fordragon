@@ -8,10 +8,6 @@ build = "build.rs"
 name = "runner"
 path = "src/runner.rs"
 
-[[bin]]
-name = "mock_client"
-path = "src/mock_client.rs"
-
 [dependencies]
 tokio = { version = "1.32.0", features = ["full"] }
 serde_json = "1.0.107"

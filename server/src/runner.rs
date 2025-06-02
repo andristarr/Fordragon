@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 
-use common::config::Config;
-use server::{
+use crate::common::config::Config;
+use crate::server::{
     packet_receiver::packet_receiver::ServerPacketReceiver,
     packet_sender::builder::ServerPacketSenderBuilder,
     server::Server,

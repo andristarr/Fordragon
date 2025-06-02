@@ -1,14 +1,8 @@
 use std::{net::SocketAddr, sync::Arc, thread, time::Duration};
 
 use anyhow::Result;
-use server::{
-    components::shared::vec3d::Vec3d,
-    packets::{packet::Packet, spawn_packet::SpawnPacket},
-};
+use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
-
-mod common;
-mod server;
 
 pub struct MockClient {}
 
@@ -48,7 +42,7 @@ impl MockClient {
                 for packet in spawn_packets {
                     let packet = serde_json::to_string(&Packet {
                         id: Some(packet_id),
-                        opcode: server::opcode::OpCode::Spawn,
+                        opcode: OpCode::Spawn,
                         data: serde_json::to_string(&packet).unwrap(),
                     })
                     .unwrap();
@@ -85,4 +79,60 @@ async fn main() {
     let mut client = MockClient {};
 
     client.run().await.unwrap();
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Vec3d {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl Vec3d {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Vec3d { x, y, z }
+    }
+
+    pub fn zero() -> Self {
+        Vec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
+
+    pub fn length(&self) -> f64 {
+        (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+pub struct Packet {
+    pub id: Option<u128>,
+    pub opcode: OpCode,
+    pub data: String,
+}
+
+impl Packet {
+    pub fn new(id: u128, opcode: OpCode, data: String) -> Self {
+        Packet {
+            id: Some(id),
+            opcode,
+            data,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SpawnPacket {
+    pub spawned_type: String,
+    pub location: Vec3d,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash, Default)]
+pub enum OpCode {
+    #[default]
+    Unset,
+    Movement,
+    Spawn,
 }

@@ -6,4 +6,5 @@ pub enum OpCode {
     Unset,
     Movement,
     Spawn,
+    Login,
 }

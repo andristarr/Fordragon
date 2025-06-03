@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::common::config::Config;
-use crate::server::{
+use server::common::config::Config;
+use server::server::{
     packet_receiver::packet_receiver::ServerPacketReceiver,
     packet_sender::builder::ServerPacketSenderBuilder,
     server::Server,
@@ -11,9 +11,6 @@ use crate::server::{
         packet_id_generator::PacketIdGenerator, state_handler::ServerStateHandler, ticker::Ticker,
     },
 };
-
-mod common;
-mod server;
 
 #[tokio::main]
 async fn main() {

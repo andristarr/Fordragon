@@ -1,7 +1,4 @@
-use bevy_ecs::{
-    schedule::{IntoSystemConfigs, Schedule},
-    world::World,
-};
+use bevy_ecs::{schedule::Schedule, world::World};
 use log::{debug, info, trace};
 use std::sync::{Arc, Mutex, RwLock};
 

@@ -12,3 +12,4 @@ log = "0.4.27"
 env_logger = "0.11.8"
 bevy = "0.16.1"
 server = { path = "../server" }
+bevy-tokio-tasks = "0.16.0"

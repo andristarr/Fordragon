@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
-use bevy_ecs::{entity::Entity, system::Resource};
+use bevy_ecs::{entity::Entity, resource::Resource};
 
 #[derive(Resource)]
 pub struct CommandContainer<T> {

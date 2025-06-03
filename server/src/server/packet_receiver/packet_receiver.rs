@@ -1,8 +1,7 @@
 use log::{debug, warn};
 
-use crate::server::packet_handler;
 use crate::server::packet_handler::builder::PacketHandlerBuilder;
-use crate::server::packet_handler::packet_handler::{PacketHandler, PacketHandlerTrait};
+use crate::server::packet_handler::packet_handler::PacketHandlerTrait;
 use crate::server::packets::packet::Packet;
 use crate::server::state::state_handler::StateHandler;
 use crate::server::state::ticker::TickerTrait;

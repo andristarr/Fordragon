@@ -18,6 +18,8 @@ Uses bevy_ecs to manage game state and systems efficiently, enabling scalable an
 #### Mock Client
 The Mock Client is a crude testing utility designed to simulate a game client for the Fordragon MMO backend. The mock client establishes a UDP connection to the server and periodically sends batches of (for now only) spawn packets.
 
+![alt text](docs/fordragon_pres.gif)
+
 
 ## Current TODO:
  - [ ] Separate SEND and RECV protocol as packets will differ.

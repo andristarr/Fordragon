@@ -259,8 +259,8 @@ mod tests {
     // For map_state, we want to check that map_move_commands and map_spawn_commands are called.
     // We'll do this by using a wrapper struct that sets flags when those functions are called.
     thread_local! {
-        static MOVE_CALLED: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
-        static SPAWN_CALLED: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
+        static MOVE_CALLED: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };
+        static SPAWN_CALLED: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };
     }
 
     struct TestHandler;

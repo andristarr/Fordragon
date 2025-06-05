@@ -15,7 +15,7 @@ use server::server::{
     packets::{
         enter_packet::EnterPacket,
         move_packet::MovePacket,
-        packet::{self, Packet},
+        packet::Packet,
     },
 };
 use tokio::net::UdpSocket;
@@ -125,7 +125,7 @@ pub fn udp_system(
 
     let packets_to_send_sender = socket_packets.packets_to_send_sender.lock().unwrap();
 
-    for (move_command) in command_container.move_commands.iter_mut() {
+    for move_command in command_container.move_commands.iter_mut() {
         let packet_id = {
             let mut id_container = curr_packet_id.0.lock().unwrap();
 
@@ -244,13 +244,9 @@ pub fn start_listen_connection(
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        let current_packet_id = CurrentPacketId {
-            0: Arc::new(Mutex::new(0)),
-        };
+        let current_packet_id = CurrentPacketId(Arc::new(Mutex::new(0)));
 
-        let owned_entity_id = OwnedEntityId {
-            0: Arc::new(Mutex::new("".to_string())),
-        };
+        let owned_entity_id = OwnedEntityId(Arc::new(Mutex::new("".to_string())));
 
         app.insert_resource(SocketPackets {
             received_packets_receiver: self.received_packets_receiver.clone(),

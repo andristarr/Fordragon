@@ -13,8 +13,6 @@ fn main() {
     let source_path = Path::new("src/server.json");
     let target_path = target_dir.join("server.json");
 
-    fs::copy(&source_path, &target_path).expect(&format!(
-        "Failed to copy {:?} to {:?}",
-        source_path, target_path
-    ));
+    fs::copy(source_path, &target_path).unwrap_or_else(|_| panic!("Failed to copy {:?} to {:?}",
+        source_path, target_path));
 }

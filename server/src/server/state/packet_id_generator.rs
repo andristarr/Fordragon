@@ -8,6 +8,12 @@ pub struct PacketIdGenerator {
     id_containers: Arc<Mutex<HashMap<SocketAddr, u128>>>,
 }
 
+impl Default for PacketIdGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PacketIdGenerator {
     pub fn new() -> Self {
         PacketIdGenerator {

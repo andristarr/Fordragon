@@ -6,6 +6,12 @@ pub struct PacketHandlerBuilder {
     handler: PacketHandler,
 }
 
+impl Default for PacketHandlerBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PacketHandlerBuilder {
     pub fn new() -> Self {
         PacketHandlerBuilder {

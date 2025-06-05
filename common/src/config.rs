@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{env, fs};
+use std::fs;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ConfigString {

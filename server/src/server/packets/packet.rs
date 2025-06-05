@@ -12,7 +12,7 @@ pub struct Packet {
 impl Packet {
     pub fn new(id: u128, opcode: OpCode, data: String) -> Self {
         Packet {
-            id: id,
+            id,
             opcode,
             data,
         }

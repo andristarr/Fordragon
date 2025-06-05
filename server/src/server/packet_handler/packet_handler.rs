@@ -18,6 +18,12 @@ pub struct PacketHandler {
     pub(super) handlers: HashMap<OpCode, Box<dyn PacketHandlerTrait>>,
 }
 
+impl Default for PacketHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PacketHandler {
     pub fn new() -> Self {
         PacketHandler {

@@ -22,3 +22,7 @@ The Mock Client is a crude testing utility designed to simulate a game client fo
 ## Current TODO:
  - Separate SEND and RECV protocol as packets will differ.
  - Command containers should implement a trait that can be easily stored and iterated through.
+
+ ####
+
+ This is a crude implementation used for research purposes. For bevy related networking, it's best to refer to the [lightyear plugin](https://github.com/cBournhonesque/lightyear)

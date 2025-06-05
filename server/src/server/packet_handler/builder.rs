@@ -1,9 +1,6 @@
-use crate::server::opcode::OpCode;
+use crate::server::{opcode::OpCode, packet_handler::enter_packet_handler::EnterPacketHandler};
 
-use super::{
-    move_packet_handler::MovePacketHandler, packet_handler::PacketHandler,
-    spawn_packet_handler::SpawnPacketHandler,
-};
+use super::{move_packet_handler::MovePacketHandler, packet_handler::PacketHandler};
 
 pub struct PacketHandlerBuilder {
     handler: PacketHandler,
@@ -16,10 +13,10 @@ impl PacketHandlerBuilder {
         }
     }
 
-    pub fn with_spawn_handler(mut self) -> Self {
+    pub fn with_enter_handler(mut self) -> Self {
         self.handler
             .handlers
-            .insert(OpCode::Spawn, Box::new(SpawnPacketHandler::new()));
+            .insert(OpCode::Enter, Box::new(EnterPacketHandler::new()));
         self
     }
 

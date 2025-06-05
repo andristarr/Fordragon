@@ -47,10 +47,10 @@ impl PacketHandlerTrait for MovePacketHandler {
             let packet_data = serde_json::from_str::<MovePacket>(&packet.data)
                 .expect("Failed to deserialize MoveCommand");
 
-            match res.entries.get_mut(&packet_data.entity) {
+            match res.entries.get_mut(&packet_data.id) {
                 Some(queue) => {
                     queue.push_back(MoveCommand::new(
-                        packet_data.entity,
+                        packet_data.id,
                         packet_data.vector.x,
                         packet_data.vector.y,
                         packet_data.vector.z,
@@ -60,12 +60,12 @@ impl PacketHandlerTrait for MovePacketHandler {
                     let mut queue = VecDeque::new();
 
                     queue.push_back(MoveCommand::new(
-                        packet_data.entity,
+                        packet_data.id.clone(),
                         packet_data.vector.x,
                         packet_data.vector.y,
                         packet_data.vector.z,
                     ));
-                    res.entries.insert(packet_data.entity, queue);
+                    res.entries.insert(packet_data.id, queue);
                 }
             }
         }

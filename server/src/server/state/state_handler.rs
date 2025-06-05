@@ -3,11 +3,13 @@ use log::{debug, info, trace};
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
-    commands::move_command::MoveCommand,
-    components::shared::vec3d::Vec3d,
+    commands::{move_command::MoveCommand, spawn_command::SpawnCommand, MapableCommand},
+    opcode::OpCode,
     packet_sender::packet_sender::{PacketSender, ServerPacketSender},
-    packets::{move_packet::MovePacket, packet::Packet},
-    systems::{self, command_container::CommandContainer},
+    systems::{
+        self, command_container::CommandContainer,
+        untargeted_command_container::UntargetedCommandContainer,
+    },
 };
 
 use super::ticker::TickerTrait;
@@ -38,6 +40,105 @@ impl ServerStateHandler {
             sender,
         }
     }
+
+    fn register_resources(&mut self, world: Arc<RwLock<World>>) {
+        world
+            .write()
+            .unwrap()
+            .insert_resource(CommandContainer::<MoveCommand> {
+                entries: Default::default(),
+            });
+
+        world
+            .write()
+            .unwrap()
+            .insert_resource(UntargetedCommandContainer::<SpawnCommand> {
+                entries: Default::default(),
+            });
+    }
+
+    fn map_move_commands(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
+        let mut world = world.write().expect("Failed to get write lock to world");
+        let sender = sender.lock().expect("Failed to lock sender");
+
+        debug!(
+            "Enqueuing packets from {:?} move commands",
+            world
+                .resource_mut::<CommandContainer<MoveCommand>>()
+                .entries
+                .len()
+        );
+
+        for command in world
+            .resource_mut::<CommandContainer<MoveCommand>>()
+            .entries
+            .iter_mut()
+        {
+            trace!("Processing command: {:?}", command);
+            let cmds = command.1.drain(..).collect::<Vec<MoveCommand>>();
+
+            for cmd in cmds {
+                let packet = cmd.map_to_packet();
+
+                trace!("Enqueuing packet: {:?}", packet);
+
+                let packet_data =
+                    serde_json::to_string(&packet).expect("Failed to serialize MoveCommand");
+
+                sender.enqueue(packet_data, OpCode::Movement);
+            }
+        }
+
+        world
+            .resource_mut::<CommandContainer<MoveCommand>>()
+            .entries
+            .iter_mut()
+            .for_each(|(_, queue)| {
+                queue.clear();
+            });
+    }
+
+    fn map_spawn_commands(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
+        let mut world = world.write().expect("Failed to get write lock to world");
+        let sender = sender.lock().expect("Failed to lock sender");
+
+        debug!(
+            "Enqueuing packets from {:?} spawn commands",
+            world
+                .resource_mut::<UntargetedCommandContainer<SpawnCommand>>()
+                .entries
+                .len()
+        );
+
+        for command in world
+            .resource_mut::<UntargetedCommandContainer<SpawnCommand>>()
+            .entries
+            .iter_mut()
+        {
+            trace!("Processing command: {:?}", command);
+
+            let packet = command.map_to_packet();
+
+            trace!("Enqueuing packet: {:?}", packet);
+
+            let packet_data =
+                serde_json::to_string(&packet).expect("Failed to serialize MoveCommand");
+
+            sender.enqueue(packet_data, OpCode::Spawn);
+        }
+
+        world
+            .resource_mut::<UntargetedCommandContainer<SpawnCommand>>()
+            .entries
+            .clear();
+    }
+
+    fn map_state(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
+        Self::map_move_commands(world.clone(), sender.clone());
+        Self::map_spawn_commands(world, sender);
+
+        trace!("Done enqueing packets");
+    }
 }
 
 impl StateHandler for ServerStateHandler {
@@ -47,12 +148,7 @@ impl StateHandler for ServerStateHandler {
 
         info!("Starting server state handler");
 
-        world
-            .write()
-            .unwrap()
-            .insert_resource(CommandContainer::<MoveCommand> {
-                entries: Default::default(),
-            });
+        self.register_resources(world.clone());
 
         // system registrations here for now, should be in their own schedules
         // no meaningful systems yet, this is just to stress test, it seems around 300k entities it starts to slow down for the targeted 8/s tickrate
@@ -62,7 +158,12 @@ impl StateHandler for ServerStateHandler {
 
         let movement_system = systems::movement::movement_system;
 
-        schedule.lock().unwrap().add_systems((movement_system,));
+        let enter_world_system = systems::enter_world::enter_world_system;
+
+        schedule
+            .lock()
+            .unwrap()
+            .add_systems((enter_world_system, movement_system));
 
         let shared_world = self.world.clone();
         let shared_sender = self.sender.clone();
@@ -73,65 +174,17 @@ impl StateHandler for ServerStateHandler {
 
             debug!("Running schedule");
             let now = std::time::Instant::now();
+            schedule.apply_deferred(&mut world);
+            debug!(
+                "Schedule applied deferred in: {:?}",
+                now.elapsed().as_millis()
+            );
             schedule.run(&mut world);
             debug!("Schedule run complete in: {:?}", now.elapsed().as_millis());
         }));
 
         self.ticker.lock().unwrap().register(Box::new(move || {
-            let mut world = shared_world
-                .write()
-                .expect("Failed to get write lock to world");
-
-            // map commands to packets from world resources
-            // TODO correctly map here
-            debug!(
-                "Enqueuing packets from {:?} move commands",
-                world
-                    .resource_mut::<CommandContainer<MoveCommand>>()
-                    .entries
-                    .len()
-            );
-
-            let sender = shared_sender.lock().expect("Failed to lock sender");
-
-            for command in world
-                .resource_mut::<CommandContainer<MoveCommand>>()
-                .entries
-                .iter_mut()
-            {
-                trace!("Processing command: {:?}", command);
-                let cmds = command.1.drain(..).collect::<Vec<MoveCommand>>();
-
-                for cmd in cmds {
-                    let packet = Packet {
-                        id: None,
-                        opcode: crate::server::opcode::OpCode::Movement,
-                        data: serde_json::to_string(&MovePacket::new(
-                            cmd.entity,
-                            Vec3d {
-                                x: cmd.x,
-                                y: cmd.y,
-                                z: cmd.z,
-                            },
-                        ))
-                        .expect("Failed to serialize MoveCommand"),
-                    };
-
-                    trace!("Enqueuing packet: {:?}", packet);
-
-                    sender.enqueue(packet);
-                }
-            }
-
-            world
-                .resource_mut::<CommandContainer<MoveCommand>>()
-                .entries
-                .iter_mut()
-                .for_each(|(_, queue)| {
-                    queue.clear();
-                });
-
-            trace!("Done enqueing packets");
+            Self::map_state(shared_world.clone(), shared_sender.clone());
         }));
 
         self.ticker.lock().unwrap().run();
@@ -139,5 +192,108 @@ impl StateHandler for ServerStateHandler {
 
     fn get_world(&self) -> Arc<RwLock<World>> {
         self.world.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::server::state::packet_id_generator::PacketIdGenerator;
+
+    use super::*;
+    use bevy_ecs::world::World;
+    use std::{
+        collections::HashSet,
+        net::SocketAddr,
+        sync::{Arc, Mutex, RwLock},
+    };
+    use tokio::net::UdpSocket;
+
+    #[test]
+    fn test_register_resources_only_registers_expected_resources() {
+        let world = Arc::new(RwLock::new(World::default()));
+        let mock_ticker = Arc::new(Mutex::new(MockTicker));
+        let mock_packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+        let mut handler = ServerStateHandler::new(
+            mock_ticker.clone(),
+            Arc::new(Mutex::new(ServerPacketSender::new(
+                mock_ticker,
+                mock_packet_id_generator,
+            ))),
+        );
+
+        handler.register_resources(world.clone());
+
+        let world_read = world.read().unwrap();
+
+        // Should contain CommandContainer<MoveCommand>
+        assert!(world_read.contains_resource::<CommandContainer<MoveCommand>>());
+        // Should contain UntargetedCommandContainer<SpawnCommand>
+        assert!(world_read.contains_resource::<UntargetedCommandContainer<SpawnCommand>>());
+        // Should NOT contain CommandContainer<SpawnCommand>
+        assert!(!world_read.contains_resource::<CommandContainer<SpawnCommand>>());
+        // Should NOT contain UntargetedCommandContainer<MoveCommand>
+        assert!(!world_read.contains_resource::<UntargetedCommandContainer<MoveCommand>>());
+    }
+
+    // Mocks for sender and ticker
+    struct MockSender;
+    impl crate::server::packet_sender::packet_sender::PacketSender for MockSender {
+        fn try_register(&mut self, _addr: std::net::SocketAddr) {}
+        fn enqueue(&self, _packet_data: String, _opcode: OpCode) {}
+        fn initialise(&mut self, _socket: std::sync::Arc<tokio::net::UdpSocket>) {}
+        fn emit_packets(
+            _packet_datas: Vec<(String, OpCode)>,
+            _connections: HashSet<SocketAddr>,
+            _socket: Arc<UdpSocket>,
+            _packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
+        ) {
+        }
+    }
+
+    struct MockTicker;
+    impl super::super::ticker::TickerTrait for MockTicker {
+        fn register(&mut self, _f: Box<dyn Fn() + Send>) {}
+        fn run(&mut self) {}
+    }
+
+    // For map_state, we want to check that map_move_commands and map_spawn_commands are called.
+    // We'll do this by using a wrapper struct that sets flags when those functions are called.
+    thread_local! {
+        static MOVE_CALLED: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
+        static SPAWN_CALLED: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
+    }
+
+    struct TestHandler;
+    impl TestHandler {
+        fn map_move_commands(_world: Arc<RwLock<World>>, _sender: Arc<Mutex<MockSender>>) {
+            MOVE_CALLED.with(|f| *f.borrow_mut() = true);
+        }
+        fn map_spawn_commands(_world: Arc<RwLock<World>>, _sender: Arc<Mutex<MockSender>>) {
+            SPAWN_CALLED.with(|f| *f.borrow_mut() = true);
+        }
+        fn map_state(world: Arc<RwLock<World>>, sender: Arc<Mutex<MockSender>>) {
+            Self::map_move_commands(world.clone(), sender.clone());
+            Self::map_spawn_commands(world, sender);
+        }
+    }
+
+    #[test]
+    fn test_map_state_calls_both_mapping_functions() {
+        MOVE_CALLED.with(|f| *f.borrow_mut() = false);
+        SPAWN_CALLED.with(|f| *f.borrow_mut() = false);
+
+        let world = Arc::new(RwLock::new(World::default()));
+        let sender = Arc::new(Mutex::new(MockSender));
+
+        TestHandler::map_state(world, sender);
+
+        assert!(
+            MOVE_CALLED.with(|f| *f.borrow()),
+            "map_move_commands should be called"
+        );
+        assert!(
+            SPAWN_CALLED.with(|f| *f.borrow()),
+            "map_spawn_commands should be called"
+        );
     }
 }

@@ -4,7 +4,7 @@ use crate::server::opcode::OpCode;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct Packet {
-    pub id: Option<u128>,
+    pub id: u128,
     pub opcode: OpCode,
     pub data: String,
 }
@@ -12,7 +12,7 @@ pub struct Packet {
 impl Packet {
     pub fn new(id: u128, opcode: OpCode, data: String) -> Self {
         Packet {
-            id: Some(id),
+            id: id,
             opcode,
             data,
         }

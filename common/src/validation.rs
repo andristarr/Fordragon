@@ -1,7 +1,6 @@
-use crate::common::database_handler::DatabaseHandler;
-use crate::common::model::Item;
-
 use async_trait::async_trait;
+
+use crate::{database_handler::DatabaseHandler, model::Item};
 
 #[async_trait]
 pub trait Validateable<T> {

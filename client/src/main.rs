@@ -1,9 +1,12 @@
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
-use server::server::{components::position::Position, packets::packet::Packet};
+use server::server::{
+    components::{networked::Networked, position::Position},
+    packets::packet::Packet,
+};
 
-use crate::udp_plugin::UdpPlugin;
+use crate::udp_plugin::{OwnEntityId, UdpPlugin};
 
 mod udp_plugin;
 
@@ -70,7 +73,7 @@ fn handle_input(
     mut commands: ResMut<CommandContainer>,
     mut query: Query<(&mut Position), (With<Position>)>,
 ) {
-    let mut move_command = MoveCommand::new(0.0, 0.0, 0.0);
+    let mut move_command = MoveCommand::new("".to_string(), 0.0, 0.0, 0.0);
 
     for (pos) in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::KeyW) {
@@ -87,24 +90,25 @@ fn handle_input(
         }
     }
 
-    commands.commands.push(move_command);
+    commands.move_commands.push(move_command);
 }
 
 #[derive(Debug, Resource, Default)]
 pub struct CommandContainer {
-    pub commands: Vec<MoveCommand>,
+    pub move_commands: Vec<MoveCommand>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MoveCommand {
+    pub id: String,
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
 
 impl MoveCommand {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
-        MoveCommand { x, y, z }
+    pub fn new(id: String, x: f64, y: f64, z: f64) -> Self {
+        MoveCommand { id, x, y, z }
     }
 }
 

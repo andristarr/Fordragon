@@ -1731,6 +1731,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bevy_ecs",
+ "env_logger",
+ "futures",
+ "log",
+ "mongodb",
+ "semaphore",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.68",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4679,6 +4698,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bevy_ecs",
+ "common",
  "env_logger",
  "futures",
  "log",

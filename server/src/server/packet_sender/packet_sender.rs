@@ -8,12 +8,13 @@ use log::{debug, error, info, trace};
 use tokio::{io::Interest, net::UdpSocket};
 
 use crate::server::{
+    opcode::OpCode,
     packets::packet::Packet,
     state::{packet_id_generator::PacketIdGenerator, ticker::TickerTrait},
 };
 
 pub struct ServerPacketSenderState {
-    pub packets: Vec<Packet>,
+    pub packet_datas: Vec<(String, OpCode)>,
     pub connections: HashSet<SocketAddr>,
     pub socket: Option<Arc<UdpSocket>>,
 }
@@ -21,10 +22,10 @@ pub struct ServerPacketSenderState {
 // this is the trivial implementation where everything gets broadcasted to everyone
 pub trait PacketSender: Send + Sync {
     fn try_register(&mut self, addr: SocketAddr);
-    fn enqueue(&self, packet: Packet);
+    fn enqueue(&self, packet_data: String, opcode: OpCode);
     fn initialise(&mut self, socket: Arc<UdpSocket>);
     fn emit_packets(
-        packets: Vec<Packet>,
+        packet_datas: Vec<(String, OpCode)>,
         connections: HashSet<SocketAddr>,
         socket: Arc<UdpSocket>,
         packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
@@ -43,7 +44,7 @@ impl ServerPacketSender {
         packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
     ) -> Self {
         let state = ServerPacketSenderState {
-            packets: vec![],
+            packet_datas: vec![],
             connections: HashSet::new(),
             socket: None,
         };
@@ -68,11 +69,11 @@ impl PacketSender for ServerPacketSender {
         }
     }
 
-    fn enqueue(&self, packet: Packet) {
-        trace!("Sending packet {:?}", packet);
+    fn enqueue(&self, packet_data: String, opcode: OpCode) {
+        trace!("Sending {:?} packet {:?}", opcode, packet_data);
 
         let mut state = self.state.lock().unwrap();
-        state.packets.push(packet);
+        state.packet_datas.push((packet_data, opcode));
     }
 
     fn initialise(&mut self, socket: Arc<UdpSocket>) {
@@ -90,7 +91,7 @@ impl PacketSender for ServerPacketSender {
             // Emit packets every tick
             let mut state = state.lock().expect("Failed to lock packet sender state");
 
-            let packets = std::mem::take(&mut state.packets);
+            let packets = std::mem::take(&mut state.packet_datas);
 
             ServerPacketSender::emit_packets(
                 packets,
@@ -105,7 +106,7 @@ impl PacketSender for ServerPacketSender {
     }
 
     fn emit_packets(
-        mut packets: Vec<Packet>,
+        mut packets: Vec<(String, OpCode)>,
         connections: HashSet<SocketAddr>,
         socket: Arc<UdpSocket>,
         packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
@@ -124,20 +125,25 @@ impl PacketSender for ServerPacketSender {
             let total_packets_sent = packets.len() * connections.len();
             debug!("Total packets to send: {}", total_packets_sent);
 
-            for packet in packets.iter_mut() {
-                let bytes = match serde_json::to_vec(&packet) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        error!("Failed to serialize packet: {:?}", e);
-                        continue;
-                    }
-                };
-
+            for packet_data in packets.iter_mut() {
                 for addr in &connections {
-                    packet_id_generator
+                    let packet_id_generator = packet_id_generator
                         .lock()
-                        .expect("Failed to get lock to shared_id_generator")
-                        .generate_id(*addr);
+                        .expect("Failed to get lock to shared_id_generator");
+
+                    let packet = Packet {
+                        id: packet_id_generator.generate_id(*addr),
+                        opcode: packet_data.1,
+                        data: packet_data.0.clone(),
+                    };
+
+                    let bytes = match serde_json::to_vec(&packet) {
+                        Ok(b) => b,
+                        Err(e) => {
+                            error!("Failed to serialize packet: {:?}", e);
+                            continue;
+                        }
+                    };
 
                     let socket = socket.clone();
                     let addr = *addr;
@@ -192,7 +198,6 @@ mod tests {
 
         sender.try_register(addr);
 
-        // Address should be present after registration
         {
             let state = sender.state.lock().unwrap();
             assert!(state.connections.contains(&addr));
@@ -210,9 +215,9 @@ mod tests {
         sender.try_register(addr);
         sender.try_register(addr);
 
-        // Address should only be present once
         {
             let state = sender.state.lock().unwrap();
+            assert!(state.connections.contains(&addr));
             assert_eq!(state.connections.iter().filter(|&&a| a == addr).count(), 1);
         }
     }
@@ -223,56 +228,38 @@ mod tests {
         fn run(&mut self) {}
     }
 
-    #[cfg(test)]
-    mod enqueue_tests {
-        use crate::server::opcode::OpCode;
+    #[test]
+    fn test_enqueue_adds_packet_to_state() {
+        let ticker = Arc::new(Mutex::new(MockTicker));
+        let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+        let sender = ServerPacketSender::new(ticker, packet_id_generator);
 
-        use super::*;
-        use std::sync::{Arc, Mutex};
+        let data = "test".to_string();
+        let opcode = OpCode::Spawn;
 
-        #[test]
-        fn test_enqueue_adds_packet_to_state() {
-            let ticker = Arc::new(Mutex::new(super::tests::MockTicker));
-            let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
-            let sender = ServerPacketSender::new(ticker, packet_id_generator);
+        sender.enqueue(data.clone(), opcode);
 
-            let packet = Packet {
-                id: Some(1),
-                opcode: OpCode::Spawn,
-                data: "test".to_string(),
-            };
+        let state = sender.state.lock().unwrap();
+        assert_eq!(state.packet_datas.len(), 1);
+        assert_eq!(state.packet_datas[0], (data, opcode));
+    }
 
-            sender.enqueue(packet.clone());
+    #[test]
+    fn test_enqueue_multiple_packets() {
+        let ticker = Arc::new(Mutex::new(MockTicker));
+        let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
+        let sender = ServerPacketSender::new(ticker, packet_id_generator);
 
-            let state = sender.state.lock().unwrap();
-            assert_eq!(state.packets.len(), 1);
-            assert_eq!(state.packets[0], packet);
-        }
+        let data1 = "first".to_string();
+        let data2 = "second".to_string();
+        let opcode = OpCode::Spawn;
 
-        #[test]
-        fn test_enqueue_multiple_packets() {
-            let ticker = Arc::new(Mutex::new(super::tests::MockTicker));
-            let packet_id_generator = Arc::new(Mutex::new(PacketIdGenerator::new()));
-            let sender = ServerPacketSender::new(ticker, packet_id_generator);
+        sender.enqueue(data1.clone(), opcode);
+        sender.enqueue(data2.clone(), opcode);
 
-            let packet1 = Packet {
-                id: Some(1),
-                opcode: OpCode::Spawn,
-                data: "first".to_string(),
-            };
-            let packet2 = Packet {
-                id: Some(2),
-                opcode: OpCode::Spawn,
-                data: "second".to_string(),
-            };
-
-            sender.enqueue(packet1.clone());
-            sender.enqueue(packet2.clone());
-
-            let state = sender.state.lock().unwrap();
-            assert_eq!(state.packets.len(), 2);
-            assert_eq!(state.packets[0], packet1);
-            assert_eq!(state.packets[1], packet2);
-        }
+        let state = sender.state.lock().unwrap();
+        assert_eq!(state.packet_datas.len(), 2);
+        assert_eq!(state.packet_datas[0], (data1, opcode));
+        assert_eq!(state.packet_datas[1], (data2, opcode));
     }
 }

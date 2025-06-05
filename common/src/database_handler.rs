@@ -1,5 +1,3 @@
-use crate::common::error::{DatabaseError, Error};
-use crate::common::validation::Validateable;
 use anyhow::Result;
 use mongodb::bson::Document;
 use mongodb::bson::{doc, from_document, to_document};
@@ -8,6 +6,9 @@ use mongodb::results::{DeleteResult, InsertOneResult};
 use mongodb::{Client, Collection, Database};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+
+use crate::error::{DatabaseError, Error};
+use crate::validation::Validateable;
 
 pub struct DatabaseHandler {
     client: Client,

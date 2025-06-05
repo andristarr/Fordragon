@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use server::common::config::Config;
+use common::config::Config;
 use server::server::{
     packet_receiver::packet_receiver::ServerPacketReceiver,
     packet_sender::builder::ServerPacketSenderBuilder,

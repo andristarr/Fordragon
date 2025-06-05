@@ -35,7 +35,7 @@ impl ServerPacketReceiver {
         let state = Arc::new(Mutex::new(state));
 
         let packet_handler = PacketHandlerBuilder::new()
-            .with_spawn_handler()
+            .with_enter_handler()
             .with_move_handler()
             .build();
 
@@ -65,7 +65,7 @@ impl ServerPacketReceiver {
 
 impl PacketReceiver for ServerPacketReceiver {
     fn consume(&self, packet: Packet, addr: SocketAddr) {
-        let packet_id = packet.id.unwrap_or(0);
+        let packet_id = packet.id;
 
         if self.state.lock().unwrap().connections.get(&addr).is_none() {
             self.state
@@ -219,7 +219,7 @@ mod tests {
             let receiver = make_receiver_with_handler(handler.clone(), HashMap::new());
 
             let packet = Packet {
-                id: Some(42),
+                id: 42,
                 opcode: crate::server::opcode::OpCode::Spawn,
                 data: "".to_string(),
             };
@@ -246,7 +246,7 @@ mod tests {
             let receiver = make_receiver_with_handler(handler.clone(), connections);
 
             let packet = Packet {
-                id: Some(50),
+                id: 50,
                 opcode: crate::server::opcode::OpCode::Spawn,
                 data: "".to_string(),
             };
@@ -273,7 +273,7 @@ mod tests {
             let receiver = make_receiver_with_handler(handler.clone(), connections);
 
             let packet = Packet {
-                id: Some(20),
+                id: 20,
                 opcode: crate::server::opcode::OpCode::Spawn,
                 data: "".to_string(),
             };

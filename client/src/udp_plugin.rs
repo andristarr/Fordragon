@@ -12,11 +12,21 @@ use bevy_tokio_tasks::TokioTasksRuntime;
 use server::server::{
     components::{position::Position, shared::vec3d::Vec3d},
     opcode::OpCode,
-    packets::{move_packet::MovePacket, packet::Packet},
+    packets::{
+        enter_packet::EnterPacket,
+        move_packet::MovePacket,
+        packet::{self, Packet},
+    },
 };
 use tokio::net::UdpSocket;
 
 use crate::CommandContainer;
+
+#[derive(Resource)]
+pub struct CurrentPacketId(pub Arc<Mutex<u128>>);
+
+#[derive(Resource)]
+pub struct OwnEntityId(pub Arc<Mutex<String>>);
 
 #[derive(Resource)]
 pub struct SocketPackets {
@@ -53,6 +63,7 @@ pub fn udp_system(
     mut commands: Commands,
     mut query: Query<(&mut Position)>,
     socket_packets: Res<SocketPackets>,
+    curr_packet_id: ResMut<CurrentPacketId>,
     mut command_container: ResMut<CommandContainer>,
 ) {
     let received_packets_receiver = socket_packets.received_packets_receiver.lock().unwrap();
@@ -85,12 +96,21 @@ pub fn udp_system(
 
     let packets_to_send_sender = socket_packets.packets_to_send_sender.lock().unwrap();
 
-    for (move_command) in command_container.commands.iter_mut() {
+    for (move_command) in command_container.move_commands.iter_mut() {
+        let packet_id = {
+            let mut id_container = curr_packet_id.0.lock().unwrap();
+
+            let curr_id = *id_container;
+            *id_container += 1;
+
+            curr_id
+        };
+
         let packet = Packet {
-            id: None,
+            id: packet_id,
             opcode: OpCode::Movement,
             data: serde_json::to_string(&MovePacket::new(
-                Entity::from_raw(0),
+                move_command.id.clone(),
                 Vec3d::new(move_command.x, move_command.y, move_command.z),
             ))
             .unwrap(),
@@ -99,7 +119,30 @@ pub fn udp_system(
         packets_to_send_sender.send(packet).unwrap();
     }
 
-    command_container.commands.clear();
+    command_container.move_commands.clear();
+}
+
+pub fn enter_world(socket_packets: Res<SocketPackets>, curr_packet_id: ResMut<CurrentPacketId>) {
+    let packet_to_send_sender = socket_packets.packets_to_send_sender.lock().unwrap();
+
+    let packet_id = {
+        let mut id_container = curr_packet_id.0.lock().unwrap();
+
+        let curr_id = *id_container;
+        *id_container += 1;
+
+        curr_id
+    };
+
+    let packet = Packet {
+        id: packet_id,
+        opcode: OpCode::Enter,
+        data: serde_json::to_string(&EnterPacket {}).unwrap(),
+    };
+
+    packet_to_send_sender.send(packet).unwrap();
+
+    println!("Enter packet sent");
 }
 
 pub fn start_listen_connection(
@@ -172,13 +215,23 @@ pub fn start_listen_connection(
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
+        let current_packet_id = CurrentPacketId {
+            0: Arc::new(Mutex::new(0)),
+        };
+
+        let own_entity_id = OwnEntityId {
+            0: Arc::new(Mutex::new("".to_string())),
+        };
+
         app.insert_resource(SocketPackets {
             received_packets_receiver: self.received_packets_receiver.clone(),
             received_packets_sender: self.received_packets_sender.clone(),
             packets_to_send_receiver: self.packets_to_send_receiver.clone(),
             packets_to_send_sender: self.packets_to_send_sender.clone(),
         })
-        .add_systems(Startup, start_listen_connection)
+        .insert_resource(current_packet_id)
+        .insert_resource(own_entity_id)
+        .add_systems(Startup, (start_listen_connection, enter_world))
         .add_systems(Update, udp_system);
     }
 }

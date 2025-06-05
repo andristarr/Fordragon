@@ -10,7 +10,7 @@ use std::{
 use bevy::prelude::*;
 use bevy_tokio_tasks::TokioTasksRuntime;
 use server::server::{
-    components::{position::Position, shared::vec3d::Vec3d},
+    components::{networked::Networked, position::Position, shared::vec3d::Vec3d},
     opcode::OpCode,
     packets::{
         enter_packet::EnterPacket,
@@ -26,7 +26,7 @@ use crate::CommandContainer;
 pub struct CurrentPacketId(pub Arc<Mutex<u128>>);
 
 #[derive(Resource)]
-pub struct OwnEntityId(pub Arc<Mutex<String>>);
+pub struct OwnedEntityId(pub Arc<Mutex<String>>);
 
 #[derive(Resource)]
 pub struct SocketPackets {
@@ -61,10 +61,16 @@ impl UdpPlugin {
 
 pub fn udp_system(
     mut commands: Commands,
-    mut query: Query<(&mut Position)>,
+    mut query: Query<
+        (Entity, &mut Position, &mut Networked, &mut Transform),
+        (With<Position>, With<Networked>, With<Transform>),
+    >,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     socket_packets: Res<SocketPackets>,
     curr_packet_id: ResMut<CurrentPacketId>,
     mut command_container: ResMut<CommandContainer>,
+    owned_entity_id: ResMut<OwnedEntityId>,
 ) {
     let received_packets_receiver = socket_packets.received_packets_receiver.lock().unwrap();
 
@@ -76,9 +82,23 @@ pub fn udp_system(
 
                 println!("Spawn packet received: {:?}", spawned_packet);
 
-                commands.spawn(Position {
-                    position: spawned_packet.location,
-                });
+                *owned_entity_id.0.lock().unwrap() = spawned_packet.id.clone();
+
+                commands.spawn((
+                    Networked {
+                        id: spawned_packet.id.clone(),
+                    },
+                    Position {
+                        position: spawned_packet.location.clone(),
+                    },
+                    Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+                    MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
+                    Transform::from_xyz(
+                        spawned_packet.location.x as f32,
+                        spawned_packet.location.y as f32,
+                        spawned_packet.location.z as f32,
+                    ),
+                ));
             }
             OpCode::Movement => {
                 let move_packet: server::server::packets::move_packet::MovePacket =
@@ -87,7 +107,16 @@ pub fn udp_system(
                 println!("Move packet received: {:?}", move_packet);
 
                 for mut entity in query.iter_mut() {
-                    entity.position = move_packet.vector.clone();
+                    if entity.2.id != move_packet.id {
+                        continue;
+                    }
+
+                    entity.1.position = move_packet.vector.clone();
+                    entity.3.translation = Vec3::new(
+                        move_packet.vector.x as f32,
+                        move_packet.vector.y as f32,
+                        move_packet.vector.z as f32,
+                    );
                 }
             }
             _ => {}
@@ -219,7 +248,7 @@ impl Plugin for UdpPlugin {
             0: Arc::new(Mutex::new(0)),
         };
 
-        let own_entity_id = OwnEntityId {
+        let owned_entity_id = OwnedEntityId {
             0: Arc::new(Mutex::new("".to_string())),
         };
 
@@ -230,7 +259,7 @@ impl Plugin for UdpPlugin {
             packets_to_send_sender: self.packets_to_send_sender.clone(),
         })
         .insert_resource(current_packet_id)
-        .insert_resource(own_entity_id)
+        .insert_resource(owned_entity_id)
         .add_systems(Startup, (start_listen_connection, enter_world))
         .add_systems(Update, udp_system);
     }

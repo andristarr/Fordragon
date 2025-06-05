@@ -3,6 +3,7 @@ use bevy_ecs::{
     query::With,
     system::{Query, ResMut},
 };
+use log::info;
 
 use crate::server::{
     commands::move_command::MoveCommand,
@@ -22,6 +23,10 @@ pub fn movement_system(
                 position.position.x += command.x;
                 position.position.y += command.y;
                 position.position.z += command.z;
+                info!(
+                    "Entity {} moved to position: ({}, {}, {})",
+                    networked.id, position.position.x, position.position.y, position.position.z
+                );
             }
         }
     }

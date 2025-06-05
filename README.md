@@ -20,8 +20,13 @@ The Mock Client is a crude testing utility designed to simulate a game client fo
 
 
 ## Current TODO:
- - Separate SEND and RECV protocol as packets will differ.
- - Command containers should implement a trait that can be easily stored and iterated through.
+ - [ ] Separate SEND and RECV protocol as packets will differ.
+ - [ ] Command containers should implement a trait that can be easily stored and iterated through.
+ - [ ] Code organisation for commonly used items should be cleaned up
+ - [ ] Interpolation of networked entities
+ - [ ] Prediction of local player
+ - [ ] Authorization of owned entities
+ - [ ] Switch to QUIC
 
  ####
 

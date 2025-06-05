@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     sync::{Arc, RwLock},
     vec,
 };
@@ -9,16 +8,9 @@ use log::{debug, trace};
 use uuid::Uuid;
 
 use crate::server::{
-    commands::{
-        move_command::MoveCommand,
-        spawn_command::{EntityComponent, SpawnCommand},
-    },
-    components::{position::Position, shared::vec3d::Vec3d},
-    packets::{enter_packet::EnterPacket, packet::Packet, spawn_packet::SpawnPacket},
-    systems::{
-        command_container::CommandContainer,
-        untargeted_command_container::UntargetedCommandContainer,
-    },
+    commands::spawn_command::{EntityComponent, SpawnCommand},
+    packets::{enter_packet::EnterPacket, packet::Packet},
+    systems::untargeted_command_container::UntargetedCommandContainer,
 };
 
 use super::packet_handler::PacketHandlerTrait;

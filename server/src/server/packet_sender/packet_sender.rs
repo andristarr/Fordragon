@@ -70,7 +70,8 @@ impl PacketSender for ServerPacketSender {
     }
 
     fn enqueue(&self, packet_data: String, opcode: OpCode) {
-        trace!("Sending {:?} packet {:?}", opcode, packet_data);
+        debug!("Sending {:?} packet", opcode);
+        trace!("Sending packet data: {}", packet_data);
 
         let mut state = self.state.lock().unwrap();
         state.packet_datas.push((packet_data, opcode));

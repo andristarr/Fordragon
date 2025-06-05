@@ -1,12 +1,9 @@
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
-use server::server::{
-    components::{networked::Networked, position::Position},
-    packets::packet::Packet,
-};
+use server::server::{components::position::Position, packets::packet::Packet};
 
-use crate::udp_plugin::{OwnEntityId, UdpPlugin};
+use crate::udp_plugin::{OwnedEntityId, UdpPlugin};
 
 mod udp_plugin;
 
@@ -26,7 +23,7 @@ fn main() {
         packets_to_send_receiver.clone(),
     );
 
-    let mut app = App::new()
+    let _ = App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(bevy_tokio_tasks::TokioTasksPlugin::default())
         .insert_resource(CommandContainer::default())
@@ -71,6 +68,7 @@ fn setup(
 fn handle_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: ResMut<CommandContainer>,
+    owned_entity_id: Res<OwnedEntityId>,
     mut query: Query<(&mut Position), (With<Position>)>,
 ) {
     let mut move_command = MoveCommand::new("".to_string(), 0.0, 0.0, 0.0);
@@ -90,7 +88,11 @@ fn handle_input(
         }
     }
 
-    commands.move_commands.push(move_command);
+    if move_command.x != 0.0 || move_command.y != 0.0 || move_command.z != 0.0 {
+        move_command.id = owned_entity_id.0.lock().unwrap().clone();
+
+        commands.move_commands.push(move_command);
+    }
 }
 
 #[derive(Debug, Resource, Default)]

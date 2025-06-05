@@ -8,16 +8,16 @@ use crate::server::{
 
 pub fn enter_world_system(
     mut commands: Commands,
-    mut spawn_commands: ResMut<UntargetedCommandContainer<SpawnCommand>>,
+    spawn_commands: ResMut<UntargetedCommandContainer<SpawnCommand>>,
 ) {
-    for spawn_command in spawn_commands.entries.drain(..) {
+    for spawn_command in spawn_commands.entries.iter() {
         let mut entity = commands.spawn_empty();
 
-        for component in spawn_command.components {
+        for component in &spawn_command.components {
             match component {
                 EntityComponent::Position(x, y, z) => {
                     entity.insert(Position {
-                        position: Vec3d::new(x, y, z),
+                        position: Vec3d::new(*x, *y, *z),
                     });
                 }
                 EntityComponent::Networked(id) => {

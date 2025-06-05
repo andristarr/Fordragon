@@ -1,7 +1,11 @@
 use std::sync::{Arc, Mutex};
 
 use bevy::prelude::*;
-use server::server::{components::position::Position, packets::packet::Packet};
+use server::server::{
+    commands::move_command::MoveCommand,
+    components::{networked::Networked, position::Position},
+    packets::packet::Packet,
+};
 
 use crate::udp_plugin::{OwnedEntityId, UdpPlugin};
 
@@ -63,27 +67,41 @@ fn handle_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: ResMut<CommandContainer>,
     owned_entity_id: Res<OwnedEntityId>,
-    mut query: Query<&mut Position, With<Position>>,
+    mut query: Query<(&mut Position, &mut Networked), (With<Position>, With<Networked>)>,
 ) {
     let mut move_command = MoveCommand::new("".to_string(), 0.0, 0.0, 0.0);
 
-    for pos in query.iter_mut() {
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            move_command.y = pos.position.y + 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            move_command.y = pos.position.y - 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            move_command.x = pos.position.x - 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            move_command.x = pos.position.x + 1.0;
+    for entity in query.iter_mut() {
+        if entity.1.id == owned_entity_id.0.lock().unwrap().clone() {
+            move_command.x = entity.0.position.x;
+            move_command.y = entity.0.position.y;
+            move_command.z = entity.0.position.z;
+
+            move_command.id = entity.1.id.clone();
         }
     }
 
-    if move_command.x != 0.0 || move_command.y != 0.0 || move_command.z != 0.0 {
-        move_command.id = owned_entity_id.0.lock().unwrap().clone();
+    let mut should_send = false;
+
+    if keyboard_input.pressed(KeyCode::KeyW) {
+        move_command.z = move_command.z - 1.0;
+        should_send = true;
+    }
+    if keyboard_input.pressed(KeyCode::KeyS) {
+        move_command.z = move_command.z + 1.0;
+        should_send = true;
+    }
+    if keyboard_input.pressed(KeyCode::KeyA) {
+        move_command.x = move_command.x - 1.0;
+        should_send = true;
+    }
+    if keyboard_input.pressed(KeyCode::KeyD) {
+        move_command.x = move_command.x + 1.0;
+        should_send = true;
+    }
+
+    if should_send {
+        println!("Sending move command: {:?}", move_command);
 
         commands.move_commands.push(move_command);
     }
@@ -92,23 +110,4 @@ fn handle_input(
 #[derive(Debug, Resource, Default)]
 pub struct CommandContainer {
     pub move_commands: Vec<MoveCommand>,
-}
-
-#[derive(Debug, Clone)]
-pub struct MoveCommand {
-    pub id: String,
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-impl MoveCommand {
-    pub fn new(id: String, x: f64, y: f64, z: f64) -> Self {
-        MoveCommand { id, x, y, z }
-    }
-}
-
-#[derive(Component)]
-pub struct Identifier {
-    pub id: String,
 }

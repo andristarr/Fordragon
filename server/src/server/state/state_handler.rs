@@ -66,7 +66,9 @@ impl ServerStateHandler {
             world
                 .resource_mut::<CommandContainer<MoveCommand>>()
                 .entries
-                .len()
+                .iter()
+                .map(|(_, queue)| queue.len())
+                .sum::<usize>()
         );
 
         for command in world

@@ -23,10 +23,11 @@ The Mock Client is a crude testing utility designed to simulate a game client fo
  - [ ] Separate SEND and RECV protocol as packets will differ.
  - [ ] Command containers should implement a trait that can be easily stored and iterated through.
  - [ ] Code organisation for commonly used items should be cleaned up
- - [ ] Interpolation of networked entities
- - [ ] Prediction of local player
+ - [ ] Interpolation of networked entities (client feature TBD)
+ - [ ] Prediction of local player (client feature TBD)
  - [ ] Authorization of owned entities
  - [ ] Switch to QUIC
+ - [ ] Stateful actions (MOVE_FORWARD_START, MOVE_FORWARD_STOP ect. instead of consuming data from clients)
 
  ####
 

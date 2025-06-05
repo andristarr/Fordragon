@@ -3,7 +3,7 @@ use bevy_ecs::{
     query::With,
     system::{Query, ResMut},
 };
-use log::info;
+use log::debug;
 
 use crate::server::{
     commands::move_command::MoveCommand,
@@ -20,10 +20,11 @@ pub fn movement_system(
         if let Some(commands) = movement_commands.entries.get_mut(&networked.id) {
             for command in commands {
                 // Apply the command to the position
-                position.position.x += command.x;
-                position.position.y += command.y;
-                position.position.z += command.z;
-                info!(
+                position.position.x = command.x;
+                position.position.y = command.y;
+                position.position.z = command.z;
+
+                debug!(
                     "Entity {} moved to position: ({}, {}, {})",
                     networked.id, position.position.x, position.position.y, position.position.z
                 );

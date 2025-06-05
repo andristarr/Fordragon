@@ -12,11 +12,7 @@ use bevy_tokio_tasks::TokioTasksRuntime;
 use server::server::{
     components::{networked::Networked, position::Position, shared::vec3d::Vec3d},
     opcode::OpCode,
-    packets::{
-        enter_packet::EnterPacket,
-        move_packet::MovePacket,
-        packet::Packet,
-    },
+    packets::{enter_packet::EnterPacket, move_packet::MovePacket, packet::Packet},
 };
 use tokio::net::UdpSocket;
 
@@ -118,6 +114,14 @@ pub fn udp_system(
                         move_packet.vector.z as f32,
                     );
                 }
+
+                println!(
+                    "Entity {} moved to position: ({}, {}, {})",
+                    move_packet.id,
+                    move_packet.vector.x as f32,
+                    move_packet.vector.y as f32,
+                    move_packet.vector.z as f32,
+                );
             }
             _ => {}
         }
@@ -202,7 +206,6 @@ pub fn start_listen_connection(
                 };
 
                 if curr.is_err() {
-                    println!("No packets to send, waiting...");
                     tokio::time::sleep(Duration::from_millis(100)).await;
                     continue;
                 } else {

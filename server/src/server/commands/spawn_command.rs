@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use serde::{Deserialize, Serialize};
 
 use crate::server::{
@@ -13,11 +15,15 @@ pub enum EntityComponent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpawnCommand {
     pub components: Vec<EntityComponent>,
+    pub owning_connection: Option<SocketAddr>,
 }
 
 impl SpawnCommand {
-    pub fn new(components: Vec<EntityComponent>) -> Self {
-        SpawnCommand { components }
+    pub fn new(components: Vec<EntityComponent>, owning_connection: Option<SocketAddr>) -> Self {
+        SpawnCommand {
+            components,
+            owning_connection,
+        }
     }
 }
 

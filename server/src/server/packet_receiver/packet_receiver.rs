@@ -87,7 +87,7 @@ impl PacketReceiver for ServerPacketReceiver {
         self.packet_handler
             .lock()
             .expect("Failed to lock packet handler")
-            .handle_packet(packet);
+            .handle_packet(addr, packet);
     }
 
     fn initialise(&mut self) {
@@ -125,7 +125,7 @@ mod tests {
         pub called: Arc<Mutex<bool>>,
     }
     impl PacketHandlerTrait for MockPacketHandler {
-        fn handle_packet(&mut self, _packet: Packet) {}
+        fn handle_packet(&mut self, _addr: std::net::SocketAddr, _packet: Packet) {}
         fn clear_packets(&mut self) {}
         fn transform_state(&mut self, _world: Arc<RwLock<World>>) {
             *self.called.lock().unwrap() = true;
@@ -177,7 +177,7 @@ mod tests {
         }
         impl PacketHandlerTrait for MockPacketHandler {
             fn clear_packets(&mut self) {}
-            fn handle_packet(&mut self, packet: Packet) {
+            fn handle_packet(&mut self, _addr: SocketAddr, packet: Packet) {
                 *self.called.lock().unwrap() = Some(packet);
             }
             fn transform_state(&mut self, _world: Arc<RwLock<World>>) {}
@@ -312,7 +312,7 @@ mod tests {
         struct MockPacketHandler;
         impl PacketHandlerTrait for MockPacketHandler {
             fn clear_packets(&mut self) {}
-            fn handle_packet(&mut self, _packet: Packet) {}
+            fn handle_packet(&mut self, _addr: SocketAddr, _packet: Packet) {}
             fn transform_state(&mut self, _world: Arc<RwLock<World>>) {}
         }
 

@@ -72,13 +72,19 @@ pub fn udp_system(
 
     while let Ok(packet) = received_packets_receiver.try_recv() {
         match packet.opcode {
+            OpCode::Enown => {
+                let enown_packet: server::server::packets::enown_packet::EnownPacket =
+                    serde_json::from_str(&packet.data).unwrap();
+
+                println!("Enown packet received: {:?}", enown_packet);
+
+                *owned_entity_id.0.lock().unwrap() = enown_packet.id.clone();
+            }
             OpCode::Spawn => {
                 let spawned_packet: server::server::packets::spawn_packet::SpawnPacket =
                     serde_json::from_str(&packet.data).unwrap();
 
                 println!("Spawn packet received: {:?}", spawned_packet);
-
-                *owned_entity_id.0.lock().unwrap() = spawned_packet.id.clone();
 
                 commands.spawn((
                     Networked {

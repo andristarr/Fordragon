@@ -1,4 +1,5 @@
 use std::{
+    net::SocketAddr,
     sync::{Arc, RwLock},
     vec,
 };
@@ -9,14 +10,14 @@ use uuid::Uuid;
 
 use crate::server::{
     commands::spawn_command::{EntityComponent, SpawnCommand},
-    packets::{enter_packet::EnterPacket, packet::Packet},
+    packets::{enter_packet::EnterPacket, packet::Packet, received_packet::ReceivedPacket},
     systems::untargeted_command_container::UntargetedCommandContainer,
 };
 
 use super::packet_handler::PacketHandlerTrait;
 
 pub(super) struct EnterPacketHandler {
-    packets: Vec<Packet>,
+    packets: Vec<ReceivedPacket>,
 }
 
 impl EnterPacketHandler {
@@ -26,10 +27,10 @@ impl EnterPacketHandler {
 }
 
 impl PacketHandlerTrait for EnterPacketHandler {
-    fn handle_packet(&mut self, packet: Packet) {
+    fn handle_packet(&mut self, addr: SocketAddr, packet: Packet) {
         trace!("Handling enter packet: {:?}", packet);
 
-        self.packets.push(packet);
+        self.packets.push(ReceivedPacket::new(packet, addr));
     }
 
     fn transform_state(&mut self, world: Arc<RwLock<World>>) {
@@ -43,15 +44,18 @@ impl PacketHandlerTrait for EnterPacketHandler {
 
             let mut world = world.write().expect("Failed to get write lock world");
 
-            let _ = serde_json::from_str::<EnterPacket>(&packet.data)
+            let _ = serde_json::from_str::<EnterPacket>(&packet.packet.data)
                 .expect("Failed to deserialize Enter Packet");
 
             let mut res = world.resource_mut::<UntargetedCommandContainer<SpawnCommand>>();
 
-            let cmd = SpawnCommand::new(vec![
-                EntityComponent::Position(0.0, 0.0, 0.0),
-                EntityComponent::Networked(Uuid::new_v4().to_string()),
-            ]);
+            let cmd = SpawnCommand::new(
+                vec![
+                    EntityComponent::Position(0.0, 0.0, 0.0),
+                    EntityComponent::Networked(Uuid::new_v4().to_string()),
+                ],
+                Some(packet.addr),
+            );
 
             trace!("Adding spawn command: {:?}", cmd);
 

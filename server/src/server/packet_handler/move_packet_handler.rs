@@ -1,6 +1,5 @@
 use std::{
-    collections::VecDeque,
-    sync::{Arc, RwLock},
+    collections::VecDeque, net::SocketAddr, sync::{Arc, RwLock}
 };
 
 use bevy_ecs::world::World;
@@ -25,13 +24,13 @@ impl MovePacketHandler {
 }
 
 impl PacketHandlerTrait for MovePacketHandler {
-    fn handle_packet(&mut self, packet: Packet) {
+    fn handle_packet(&mut self, _addr: SocketAddr, packet: Packet) {
         trace!("Handling move packet: {:?}", packet);
 
         self.packets.push(packet);
     }
 
-    fn transform_state(&mut self, _world: Arc<RwLock<World>>) {
+    fn transform_state(&mut self, world: Arc<RwLock<World>>) {
         debug!(
             "Transforming state with {} move packets",
             self.packets.len()
@@ -40,7 +39,7 @@ impl PacketHandlerTrait for MovePacketHandler {
         for packet in &self.packets {
             trace!("Processing move packet: {:?}", packet);
 
-            let mut world = _world.write().expect("Failed to get write lock world");
+            let mut world = world.write().expect("Failed to get write lock world");
 
             let mut res = world.resource_mut::<CommandContainer<MoveCommand>>();
 

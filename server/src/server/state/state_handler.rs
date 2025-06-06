@@ -4,8 +4,13 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
     commands::{move_command::MoveCommand, spawn_command::SpawnCommand, MapableCommand},
+    components::{networked::Networked, position::Position, shared::vec3d::Vec3d},
     opcode::OpCode,
-    packet_sender::packet_sender::{PacketSender, ServerPacketSender},
+    packet_sender::{
+        packet_sender::{PacketSender, ServerPacketSender},
+        send_packet::SendPacket,
+    },
+    packets::{enown_packet::EnownPacket, spawn_packet::SpawnPacket},
     systems::{
         self, command_container::CommandContainer,
         untargeted_command_container::UntargetedCommandContainer,
@@ -87,7 +92,7 @@ impl ServerStateHandler {
                 let packet_data =
                     serde_json::to_string(&packet).expect("Failed to serialize MoveCommand");
 
-                sender.enqueue(packet_data, OpCode::Movement);
+                sender.enqueue(SendPacket::new(packet_data, OpCode::Movement, None));
             }
         }
 
@@ -112,6 +117,21 @@ impl ServerStateHandler {
                 .len()
         );
 
+        // Also queue already existing packets
+
+        let networked_entities = world
+            .query::<(&Networked, &Position)>()
+            .iter(&world)
+            .map(|(networked, position)| SpawnPacket {
+                id: networked.id.clone(),
+                location: Vec3d::new(
+                    position.position.x,
+                    position.position.y,
+                    position.position.z,
+                ),
+            })
+            .collect::<Vec<SpawnPacket>>();
+
         for command in world
             .resource_mut::<UntargetedCommandContainer<SpawnCommand>>()
             .entries
@@ -124,9 +144,30 @@ impl ServerStateHandler {
             trace!("Enqueuing packet: {:?}", packet);
 
             let packet_data =
-                serde_json::to_string(&packet).expect("Failed to serialize MoveCommand");
+                serde_json::to_string(&packet).expect("Failed to serialize SpawnCommand");
 
-            sender.enqueue(packet_data, OpCode::Spawn);
+            sender.enqueue(SendPacket::new(packet_data.clone(), OpCode::Spawn, None));
+
+            networked_entities
+                .iter()
+                .filter(|n| n.id != packet.id)
+                .for_each(|spawn| {
+                    sender.enqueue(SendPacket::new(
+                        serde_json::to_string(&spawn).expect("Failed to serialize SpawnPacket"),
+                        OpCode::Spawn,
+                        None,
+                    ));
+                });
+
+            let enown_packet = EnownPacket {
+                id: packet.id.clone(),
+            };
+
+            sender.enqueue(SendPacket::new(
+                serde_json::to_string(&enown_packet).expect("Failed to serialize SpawnCommand"),
+                OpCode::Enown,
+                command.owning_connection.clone(),
+            ));
         }
 
         world
@@ -227,24 +268,19 @@ mod tests {
 
         let world_read = world.read().unwrap();
 
-        // Should contain CommandContainer<MoveCommand>
         assert!(world_read.contains_resource::<CommandContainer<MoveCommand>>());
-        // Should contain UntargetedCommandContainer<SpawnCommand>
         assert!(world_read.contains_resource::<UntargetedCommandContainer<SpawnCommand>>());
-        // Should NOT contain CommandContainer<SpawnCommand>
         assert!(!world_read.contains_resource::<CommandContainer<SpawnCommand>>());
-        // Should NOT contain UntargetedCommandContainer<MoveCommand>
         assert!(!world_read.contains_resource::<UntargetedCommandContainer<MoveCommand>>());
     }
 
-    // Mocks for sender and ticker
     struct MockSender;
     impl crate::server::packet_sender::packet_sender::PacketSender for MockSender {
         fn try_register(&mut self, _addr: std::net::SocketAddr) {}
-        fn enqueue(&self, _packet_data: String, _opcode: OpCode) {}
+        fn enqueue(&self, _send_packet: crate::server::packet_sender::send_packet::SendPacket) {}
         fn initialise(&mut self, _socket: std::sync::Arc<tokio::net::UdpSocket>) {}
         fn emit_packets(
-            _packet_datas: Vec<(String, OpCode)>,
+            _packet_datas: Vec<crate::server::packet_sender::send_packet::SendPacket>,
             _connections: HashSet<SocketAddr>,
             _socket: Arc<UdpSocket>,
             _packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
@@ -258,8 +294,6 @@ mod tests {
         fn run(&mut self) {}
     }
 
-    // For map_state, we want to check that map_move_commands and map_spawn_commands are called.
-    // We'll do this by using a wrapper struct that sets flags when those functions are called.
     thread_local! {
         static MOVE_CALLED: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };
         static SPAWN_CALLED: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };

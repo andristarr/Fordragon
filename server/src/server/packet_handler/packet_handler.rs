@@ -1,6 +1,5 @@
 use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
+    collections::HashMap, net::SocketAddr, sync::{Arc, RwLock}
 };
 
 use bevy_ecs::world::World;
@@ -9,7 +8,7 @@ use log::debug;
 use crate::server::{opcode::OpCode, packets::packet::Packet};
 
 pub trait PacketHandlerTrait: Send + Sync {
-    fn handle_packet(&mut self, packet: Packet);
+    fn handle_packet(&mut self, addr: SocketAddr, packet: Packet);
     fn transform_state(&mut self, world: Arc<RwLock<World>>);
     fn clear_packets(&mut self);
 }
@@ -31,11 +30,11 @@ impl PacketHandler {
         }
     }
 
-    pub fn handle_packet(&mut self, packet: Packet) {
+    pub fn handle_packet(&mut self, addr: SocketAddr, packet: Packet) {
         debug!("Handling packet: {:?}", packet.opcode);
 
         if let Some(handler) = self.handlers.get_mut(&packet.opcode) {
-            handler.handle_packet(packet);
+            handler.handle_packet(addr, packet);
         } else {
             debug!(
                 "No handler found for packet with opcode: {:?}",
@@ -46,8 +45,8 @@ impl PacketHandler {
 }
 
 impl PacketHandlerTrait for PacketHandler {
-    fn handle_packet(&mut self, packet: Packet) {
-        self.handle_packet(packet);
+    fn handle_packet(&mut self, addr: SocketAddr, packet: Packet) {
+        self.handle_packet(addr, packet);
     }
 
     fn transform_state(&mut self, world: Arc<RwLock<World>>) {

@@ -7,4 +7,5 @@ pub enum OpCode {
     Movement,
     Spawn,
     Enter,
+    Enown,
 }

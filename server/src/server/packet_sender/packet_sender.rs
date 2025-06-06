@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
@@ -8,13 +8,13 @@ use log::{debug, error, info, trace};
 use tokio::{io::Interest, net::UdpSocket};
 
 use crate::server::{
-    opcode::OpCode,
+    packet_sender::send_packet::SendPacket,
     packets::packet::Packet,
     state::{packet_id_generator::PacketIdGenerator, ticker::TickerTrait},
 };
 
 pub struct ServerPacketSenderState {
-    pub packet_datas: Vec<(String, OpCode)>,
+    pub packet_datas: Vec<SendPacket>,
     pub connections: HashSet<SocketAddr>,
     pub socket: Option<Arc<UdpSocket>>,
 }
@@ -22,10 +22,10 @@ pub struct ServerPacketSenderState {
 // this is the trivial implementation where everything gets broadcasted to everyone
 pub trait PacketSender: Send + Sync {
     fn try_register(&mut self, addr: SocketAddr);
-    fn enqueue(&self, packet_data: String, opcode: OpCode);
+    fn enqueue(&self, send_packet: SendPacket);
     fn initialise(&mut self, socket: Arc<UdpSocket>);
     fn emit_packets(
-        packet_datas: Vec<(String, OpCode)>,
+        packet_datas: Vec<SendPacket>,
         connections: HashSet<SocketAddr>,
         socket: Arc<UdpSocket>,
         packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
@@ -69,12 +69,16 @@ impl PacketSender for ServerPacketSender {
         }
     }
 
-    fn enqueue(&self, packet_data: String, opcode: OpCode) {
-        debug!("Sending {:?} packet", opcode);
-        trace!("Sending packet data: {}", packet_data);
+    fn enqueue(&self, send_packet: SendPacket) {
+        debug!(
+            "Sending {:?} packet to {:?}",
+            send_packet.opcode, send_packet.addr
+        );
+        trace!("Sending packet data: {}", send_packet.packet_data);
 
         let mut state = self.state.lock().unwrap();
-        state.packet_datas.push((packet_data, opcode));
+
+        state.packet_datas.push(send_packet);
     }
 
     fn initialise(&mut self, socket: Arc<UdpSocket>) {
@@ -107,7 +111,7 @@ impl PacketSender for ServerPacketSender {
     }
 
     fn emit_packets(
-        mut packets: Vec<(String, OpCode)>,
+        packets: Vec<SendPacket>,
         connections: HashSet<SocketAddr>,
         socket: Arc<UdpSocket>,
         packet_id_generator: Arc<Mutex<PacketIdGenerator>>,
@@ -126,46 +130,64 @@ impl PacketSender for ServerPacketSender {
             let total_packets_sent = packets.len() * connections.len();
             debug!("Total packets to send: {}", total_packets_sent);
 
-            for packet_data in packets.iter_mut() {
-                for addr in &connections {
-                    let packet_id_generator = packet_id_generator
-                        .lock()
-                        .expect("Failed to get lock to shared_id_generator");
+            let mut packets_by_addr: HashMap<SocketAddr, Vec<SendPacket>> = HashMap::new();
 
-                    let packet = Packet {
-                        id: packet_id_generator.generate_id(*addr),
-                        opcode: packet_data.1,
-                        data: packet_data.0.clone(),
-                    };
+            for send_packet in packets.into_iter() {
+                if let Some(addr) = send_packet.addr {
+                    packets_by_addr.entry(addr).or_default().push(send_packet);
+                } else {
+                    // If no specific address, broadcast to all connections
+                    for addr in &connections {
+                        packets_by_addr
+                            .entry(*addr)
+                            .or_default()
+                            .push(send_packet.clone());
+                    }
+                }
+            }
 
-                    let bytes = match serde_json::to_vec(&packet) {
-                        Ok(b) => b,
-                        Err(e) => {
-                            error!("Failed to serialize packet: {:?}", e);
-                            continue;
-                        }
-                    };
+            for addr in &connections {
+                let packet_id_generator = packet_id_generator
+                    .lock()
+                    .expect("Failed to get lock to shared_id_generator");
 
-                    let socket = socket.clone();
-                    let addr = *addr;
-                    let bytes = bytes.clone();
+                if let Some(send_packets) = packets_by_addr.get(addr) {
+                    for send_packet in send_packets {
+                        let packet = Packet {
+                            id: packet_id_generator.generate_id(*addr),
+                            opcode: send_packet.opcode,
+                            data: send_packet.packet_data.clone(),
+                        };
 
-                    let fut = async move {
-                        let ready = socket.ready(Interest::WRITABLE).await;
-
-                        if ready.is_ok() {
-                            if ready.unwrap().is_writable() {
-                                match socket.try_send_to(&bytes, addr) {
-                                    Ok(sent) => trace!("Sent {} bytes to {:?}", sent, addr),
-                                    Err(e) => error!("Failed to send packet: {:?}", e),
-                                }
-                            } else {
-                                error!("Socket not writable, packet not sent to {:?}", addr);
+                        let bytes = match serde_json::to_vec(&packet) {
+                            Ok(b) => b,
+                            Err(e) => {
+                                error!("Failed to serialize packet: {:?}", e);
+                                continue;
                             }
-                        }
-                    };
+                        };
 
-                    send_futures.push(fut);
+                        let socket = socket.clone();
+                        let addr = *addr;
+                        let bytes = bytes.clone();
+
+                        let fut = async move {
+                            let ready = socket.ready(Interest::WRITABLE).await;
+
+                            if ready.is_ok() {
+                                if ready.unwrap().is_writable() {
+                                    match socket.try_send_to(&bytes, addr) {
+                                        Ok(sent) => trace!("Sent {} bytes to {:?}", sent, addr),
+                                        Err(e) => error!("Failed to send packet: {:?}", e),
+                                    }
+                                } else {
+                                    error!("Socket not writable, packet not sent to {:?}", addr);
+                                }
+                            }
+                        };
+
+                        send_futures.push(fut);
+                    }
                 }
             }
 
@@ -177,6 +199,7 @@ impl PacketSender for ServerPacketSender {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::server::opcode::OpCode;
     use std::net::{Ipv4Addr, SocketAddr};
     use std::sync::{Arc, Mutex};
 
@@ -237,12 +260,18 @@ mod tests {
 
         let data = "test".to_string();
         let opcode = OpCode::Spawn;
+        let send_packet = SendPacket {
+            addr: None,
+            opcode,
+            packet_data: data.clone(),
+        };
 
-        sender.enqueue(data.clone(), opcode);
+        sender.enqueue(send_packet);
 
         let state = sender.state.lock().unwrap();
         assert_eq!(state.packet_datas.len(), 1);
-        assert_eq!(state.packet_datas[0], (data, opcode));
+        assert_eq!(state.packet_datas[0].packet_data, data);
+        assert_eq!(state.packet_datas[0].opcode, opcode);
     }
 
     #[test]
@@ -254,13 +283,25 @@ mod tests {
         let data1 = "first".to_string();
         let data2 = "second".to_string();
         let opcode = OpCode::Spawn;
+        let send_packet1 = SendPacket {
+            addr: None,
+            opcode,
+            packet_data: data1.clone(),
+        };
+        let send_packet2 = SendPacket {
+            addr: None,
+            opcode,
+            packet_data: data2.clone(),
+        };
 
-        sender.enqueue(data1.clone(), opcode);
-        sender.enqueue(data2.clone(), opcode);
+        sender.enqueue(send_packet1);
+        sender.enqueue(send_packet2);
 
         let state = sender.state.lock().unwrap();
         assert_eq!(state.packet_datas.len(), 2);
-        assert_eq!(state.packet_datas[0], (data1, opcode));
-        assert_eq!(state.packet_datas[1], (data2, opcode));
+        assert_eq!(state.packet_datas[0].packet_data, data1);
+        assert_eq!(state.packet_datas[0].opcode, opcode);
+        assert_eq!(state.packet_datas[1].packet_data, data2);
+        assert_eq!(state.packet_datas[1].opcode, opcode);
     }
 }

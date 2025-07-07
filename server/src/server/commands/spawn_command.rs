@@ -1,15 +1,19 @@
 use std::net::SocketAddr;
 
+use bevy_ecs::world::World;
 use serde::{Deserialize, Serialize};
 
 use crate::server::{
-    commands::MapableCommand, components::shared::vec3d::Vec3d, packets::spawn_packet::SpawnPacket,
+    commands::MapableCommand,
+    components::{movement_state::MovementStateType, shared::vec3d::Vec3d},
+    protocols::send::spawn_packet::SpawnPacket,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EntityComponent {
     Position(f64, f64, f64),
     Networked(String),
+    MovementState(MovementStateType, f64),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,7 +34,7 @@ impl SpawnCommand {
 impl MapableCommand for SpawnCommand {
     type PacketType = SpawnPacket;
 
-    fn map_to_packet(&self) -> Self::PacketType {
+    fn map_to_packet(&self, _world: &mut World) -> Self::PacketType {
         let networked = self
             .components
             .iter()

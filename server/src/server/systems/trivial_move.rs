@@ -7,7 +7,7 @@ use log::trace;
 
 use crate::server::{
     commands::move_command::MoveCommand,
-    components::{networked::Networked, position::Position},
+    components::{movement_state::MovementStateType, networked::Networked, position::Position},
 };
 
 use super::command_container::CommandContainer;
@@ -23,7 +23,13 @@ pub fn trivival_move_system(
 
     for (_, _position, networked) in query.iter_mut() {
         if let Some(commands) = movement_commands.entries.get_mut(&networked.id) {
-            commands.push_back(MoveCommand::new(networked.id.clone(), 1.0, 0.0, 0.0));
+            commands.push_back(MoveCommand::new(
+                networked.id.clone(),
+                1.0,
+                0.0,
+                0.0,
+                MovementStateType::Moving,
+            ));
         }
     }
 

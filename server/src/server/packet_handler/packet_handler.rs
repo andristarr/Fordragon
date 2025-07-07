@@ -1,9 +1,11 @@
 use std::{
-    collections::HashMap, net::SocketAddr, sync::{Arc, RwLock}
+    collections::HashMap,
+    net::SocketAddr,
+    sync::{Arc, RwLock},
 };
 
 use bevy_ecs::world::World;
-use log::debug;
+use log::{debug, trace};
 
 use crate::server::{opcode::OpCode, packets::packet::Packet};
 
@@ -32,6 +34,8 @@ impl PacketHandler {
 
     pub fn handle_packet(&mut self, addr: SocketAddr, packet: Packet) {
         debug!("Handling packet: {:?}", packet.opcode);
+
+        trace!("Packet data: {:?}", packet.data);
 
         if let Some(handler) = self.handlers.get_mut(&packet.opcode) {
             handler.handle_packet(addr, packet);

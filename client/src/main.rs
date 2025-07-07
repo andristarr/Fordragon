@@ -3,11 +3,14 @@ use std::sync::{Arc, Mutex};
 use bevy::prelude::*;
 use server::server::{
     commands::move_command::MoveCommand,
-    components::{networked::Networked, position::Position},
+    components::{
+        movement_state::MovementStateType, networked::Networked, position::Position,
+        shared::vec3d::Vec3d,
+    },
     packets::packet::Packet,
 };
 
-use crate::udp_plugin::{OwnedEntityId, UdpPlugin};
+use crate::udp_plugin::{IsMoving, OwnedEntityId, UdpPlugin};
 
 mod udp_plugin;
 
@@ -63,48 +66,52 @@ fn setup(
     ));
 }
 
+// handling combined input from keyboard
 fn handle_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: ResMut<CommandContainer>,
     owned_entity_id: Res<OwnedEntityId>,
+    mut is_moving: ResMut<IsMoving>,
     mut query: Query<(&mut Position, &mut Networked), (With<Position>, With<Networked>)>,
 ) {
-    let mut move_command = MoveCommand::new("".to_string(), 0.0, 0.0, 0.0);
+    let mut move_command =
+        MoveCommand::new("".to_string(), 0.0, 0.0, 0.0, MovementStateType::Moving);
 
-    for entity in query.iter_mut() {
-        if entity.1.id == owned_entity_id.0.lock().unwrap().clone() {
-            move_command.x = entity.0.position.x;
-            move_command.y = entity.0.position.y;
-            move_command.z = entity.0.position.z;
-
-            move_command.id = entity.1.id.clone();
-        }
-    }
-
-    let mut should_send = false;
+    let mut has_move = false;
 
     if keyboard_input.pressed(KeyCode::KeyW) {
-        move_command.z = move_command.z - 1.0;
-        should_send = true;
+        move_command.z = -1.0;
+        has_move = true;
     }
     if keyboard_input.pressed(KeyCode::KeyS) {
-        move_command.z = move_command.z + 1.0;
-        should_send = true;
+        move_command.z = 1.0;
+        has_move = true;
     }
     if keyboard_input.pressed(KeyCode::KeyA) {
-        move_command.x = move_command.x - 1.0;
-        should_send = true;
+        move_command.x = -1.0;
+        has_move = true;
     }
     if keyboard_input.pressed(KeyCode::KeyD) {
-        move_command.x = move_command.x + 1.0;
-        should_send = true;
+        move_command.x = 1.0;
+        has_move = true;
     }
 
-    if should_send {
-        println!("Sending move command: {:?}", move_command);
-
-        commands.move_commands.push(move_command);
+    if is_moving.0.x == move_command.x
+        && is_moving.0.z == move_command.z
+        && is_moving.0.y == move_command.y
+    {
+        return;
     }
+
+    is_moving.0 = Vec3d::new(move_command.x, move_command.y, move_command.z);
+
+    if !has_move {
+        move_command.state = MovementStateType::Stopped;
+    }
+
+    println!("Sending move command: {:?}", move_command);
+
+    commands.move_commands.push(move_command);
 }
 
 #[derive(Debug, Resource, Default)]

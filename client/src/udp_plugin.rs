@@ -10,13 +10,23 @@ use std::{
 use bevy::prelude::*;
 use bevy_tokio_tasks::TokioTasksRuntime;
 use server::server::{
-    components::{networked::Networked, position::Position, shared::vec3d::Vec3d},
+    components::{
+        movement_state::MovementStateType, networked::Networked, position::Position,
+        shared::vec3d::Vec3d,
+    },
     opcode::OpCode,
-    packets::{enter_packet::EnterPacket, move_packet::MovePacket, packet::Packet},
+    packets::packet::Packet,
+    protocols::{
+        recv::{enter_packet::EnterPacket, move_packet::MovePacket},
+        send::{enown_packet::EnownPacket, moved_packet::MovedPacket, spawn_packet::SpawnPacket},
+    },
 };
 use tokio::net::UdpSocket;
 
 use crate::CommandContainer;
+
+#[derive(Resource)]
+pub struct IsMoving(pub Vec3d);
 
 #[derive(Resource)]
 pub struct CurrentPacketId(pub Arc<Mutex<u128>>);
@@ -73,16 +83,14 @@ pub fn udp_system(
     while let Ok(packet) = received_packets_receiver.try_recv() {
         match packet.opcode {
             OpCode::Enown => {
-                let enown_packet: server::server::packets::enown_packet::EnownPacket =
-                    serde_json::from_str(&packet.data).unwrap();
+                let enown_packet: EnownPacket = serde_json::from_str(&packet.data).unwrap();
 
                 println!("Enown packet received: {:?}", enown_packet);
 
                 *owned_entity_id.0.lock().unwrap() = enown_packet.id.clone();
             }
             OpCode::Spawn => {
-                let spawned_packet: server::server::packets::spawn_packet::SpawnPacket =
-                    serde_json::from_str(&packet.data).unwrap();
+                let spawned_packet: SpawnPacket = serde_json::from_str(&packet.data).unwrap();
 
                 println!("Spawn packet received: {:?}", spawned_packet);
 
@@ -102,14 +110,13 @@ pub fn udp_system(
                     ),
                 ));
             }
-            OpCode::Movement => {
-                let move_packet: server::server::packets::move_packet::MovePacket =
-                    serde_json::from_str(&packet.data).unwrap();
+            OpCode::Moved => {
+                let move_packet: MovedPacket = serde_json::from_str(&packet.data).unwrap();
 
                 println!("Move packet received: {:?}", move_packet);
 
                 for mut entity in query.iter_mut() {
-                    if entity.2.id != move_packet.id {
+                    if entity.2.id != move_packet.networked_id {
                         continue;
                     }
 
@@ -123,7 +130,7 @@ pub fn udp_system(
 
                 println!(
                     "Entity {} moved to position: ({}, {}, {})",
-                    move_packet.id,
+                    move_packet.networked_id,
                     move_packet.vector.x as f32,
                     move_packet.vector.y as f32,
                     move_packet.vector.z as f32,
@@ -147,10 +154,10 @@ pub fn udp_system(
 
         let packet = Packet {
             id: packet_id,
-            opcode: OpCode::Movement,
+            opcode: OpCode::Move,
             data: serde_json::to_string(&MovePacket::new(
-                move_command.id.clone(),
                 Vec3d::new(move_command.x, move_command.y, move_command.z),
+                move_command.state.clone(),
             ))
             .unwrap(),
         };
@@ -254,6 +261,7 @@ pub fn start_listen_connection(
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
         let current_packet_id = CurrentPacketId(Arc::new(Mutex::new(0)));
+        let is_moving = IsMoving(Vec3d::zero());
 
         let owned_entity_id = OwnedEntityId(Arc::new(Mutex::new("".to_string())));
 
@@ -264,6 +272,7 @@ impl Plugin for UdpPlugin {
             packets_to_send_sender: self.packets_to_send_sender.clone(),
         })
         .insert_resource(current_packet_id)
+        .insert_resource(is_moving)
         .insert_resource(owned_entity_id)
         .add_systems(Startup, (start_listen_connection, enter_world))
         .add_systems(Update, udp_system);

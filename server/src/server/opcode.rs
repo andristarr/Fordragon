@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 pub enum OpCode {
     #[default]
     Unset,
-    Movement,
+    Moved,
+    Move,
     Spawn,
     Enter,
     Enown,

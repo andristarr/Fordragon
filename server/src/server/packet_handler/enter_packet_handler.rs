@@ -10,7 +10,10 @@ use uuid::Uuid;
 
 use crate::server::{
     commands::spawn_command::{EntityComponent, SpawnCommand},
-    packets::{enter_packet::EnterPacket, packet::Packet, received_packet::ReceivedPacket},
+    components::movement_state::MovementStateType,
+    packets::{packet::Packet, received_packet::ReceivedPacket},
+    protocols::recv::enter_packet::EnterPacket,
+    state::authorization_handler::AuthorizationHandlerTrait,
     systems::untargeted_command_container::UntargetedCommandContainer,
 };
 
@@ -18,11 +21,15 @@ use super::packet_handler::PacketHandlerTrait;
 
 pub(super) struct EnterPacketHandler {
     packets: Vec<ReceivedPacket>,
+    authorization_handler: Arc<RwLock<dyn AuthorizationHandlerTrait>>,
 }
 
 impl EnterPacketHandler {
-    pub fn new() -> Self {
-        EnterPacketHandler { packets: vec![] }
+    pub fn new(authorization_handler: Arc<RwLock<dyn AuthorizationHandlerTrait>>) -> Self {
+        EnterPacketHandler {
+            authorization_handler,
+            packets: vec![],
+        }
     }
 }
 
@@ -39,6 +46,11 @@ impl PacketHandlerTrait for EnterPacketHandler {
             self.packets.len()
         );
 
+        let mut authorization_handler = self
+            .authorization_handler
+            .write()
+            .expect("Failed to get read lock on authorization handler");
+
         for packet in &self.packets {
             trace!("Processing enter packet: {:?}", packet);
 
@@ -49,10 +61,15 @@ impl PacketHandlerTrait for EnterPacketHandler {
 
             let mut res = world.resource_mut::<UntargetedCommandContainer<SpawnCommand>>();
 
+            let character_id = Uuid::new_v4();
+
+            authorization_handler.add_entity(packet.addr.clone(), character_id.clone());
+
             let cmd = SpawnCommand::new(
                 vec![
                     EntityComponent::Position(0.0, 0.0, 0.0),
-                    EntityComponent::Networked(Uuid::new_v4().to_string()),
+                    EntityComponent::Networked(character_id.to_string()),
+                    EntityComponent::MovementState(MovementStateType::Stopped, 0.25),
                 ],
                 Some(packet.addr),
             );

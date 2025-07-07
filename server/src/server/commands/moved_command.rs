@@ -3,29 +3,25 @@ use serde::{Deserialize, Serialize};
 
 use crate::server::{
     commands::MapableCommand,
-    components::{
-        movement_state::MovementStateType, networked::Networked, position::Position,
-        shared::vec3d::Vec3d,
-    },
+    components::{networked::Networked, position::Position, shared::vec3d::Vec3d},
     protocols::send::moved_packet::MovedPacket,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MoveCommand {
+pub struct MovedCommand {
     pub id: String,
     pub x: f64,
     pub y: f64,
     pub z: f64,
-    pub state: MovementStateType,
 }
 
-impl MoveCommand {
-    pub fn new(id: String, x: f64, y: f64, z: f64, state: MovementStateType) -> Self {
-        MoveCommand { id, x, y, z, state }
+impl MovedCommand {
+    pub fn new(id: String, x: f64, y: f64, z: f64) -> Self {
+        MovedCommand { id, x, y, z }
     }
 }
 
-impl MapableCommand for MoveCommand {
+impl MapableCommand for MovedCommand {
     type PacketType = MovedPacket;
 
     fn map_to_packet(&self, world: &mut World) -> Self::PacketType {

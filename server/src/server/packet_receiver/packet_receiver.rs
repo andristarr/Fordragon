@@ -1,13 +1,14 @@
-use log::{debug, warn};
+use log::{debug, trace, warn};
 
 use crate::server::packet_handler::builder::PacketHandlerBuilder;
 use crate::server::packet_handler::packet_handler::PacketHandlerTrait;
 use crate::server::packets::packet::Packet;
+use crate::server::state::authorization_handler::AuthorizationHandlerTrait;
 use crate::server::state::state_handler::StateHandler;
 use crate::server::state::ticker::TickerTrait;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub trait PacketReceiver: Send + Sync {
     fn consume(&self, packet: Packet, addr: SocketAddr);
@@ -26,7 +27,11 @@ pub struct ServerPacketReceiverState {
 }
 
 impl ServerPacketReceiver {
-    pub fn new(state_handler: Box<dyn StateHandler>, ticker: Arc<Mutex<dyn TickerTrait>>) -> Self {
+    pub fn new(
+        state_handler: Box<dyn StateHandler>,
+        ticker: Arc<Mutex<dyn TickerTrait>>,
+        authorization_handler: Arc<RwLock<dyn AuthorizationHandlerTrait>>,
+    ) -> Self {
         let state = ServerPacketReceiverState {
             state_handler,
             connections: HashMap::new(),
@@ -35,8 +40,8 @@ impl ServerPacketReceiver {
         let state = Arc::new(Mutex::new(state));
 
         let packet_handler = PacketHandlerBuilder::new()
-            .with_enter_handler()
-            .with_move_handler()
+            .with_enter_handler(authorization_handler.clone())
+            .with_move_handler(authorization_handler.clone())
             .build();
 
         ServerPacketReceiver {
@@ -66,6 +71,8 @@ impl ServerPacketReceiver {
 impl PacketReceiver for ServerPacketReceiver {
     fn consume(&self, packet: Packet, addr: SocketAddr) {
         let packet_id = packet.id;
+
+        trace!("Received packet: {:?} from {:?}", packet, addr);
 
         if self.state.lock().unwrap().connections.get(&addr).is_none() {
             self.state

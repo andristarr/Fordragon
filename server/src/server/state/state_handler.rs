@@ -1,19 +1,13 @@
-use bevy_ecs::{error::trace, schedule::Schedule, world::World};
+use bevy_ecs::{schedule::Schedule, world::World};
 use log::{debug, info, trace};
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::server::{
     commands::{
         move_command::MoveCommand, moved_command::MovedCommand, spawn_command::SpawnCommand,
-        MapableCommand,
+        StateMappedCommand,
     },
-    components::{networked::Networked, position::Position, shared::vec3d::Vec3d},
-    opcode::OpCode,
-    packet_sender::{
-        packet_sender::{PacketSender, ServerPacketSender},
-        send_packet::SendPacket,
-    },
-    protocols::send::{enown_packet::EnownPacket, spawn_packet::SpawnPacket},
+    packet_sender::packet_sender::ServerPacketSender,
     systems::{
         self, command_container::CommandContainer,
         untargeted_command_container::UntargetedCommandContainer,
@@ -72,159 +66,10 @@ impl ServerStateHandler {
             });
     }
 
-    fn map_move_commands(world: Arc<RwLock<World>>, _sender: Arc<Mutex<ServerPacketSender>>) {
-        let mut world = world.write().expect("Failed to get write lock to world");
-
-        debug!(
-            "Enqueuing packets from {:?} move commands",
-            world
-                .resource_mut::<CommandContainer<MoveCommand>>()
-                .entries
-                .iter()
-                .map(|(_, queue)| queue.len())
-                .sum::<usize>()
-        );
-
-        {
-            let mut command_container = world.resource_mut::<CommandContainer<MoveCommand>>();
-            for (_, queue) in command_container.entries.iter_mut() {
-                _ = queue.drain(..).collect::<Vec<MoveCommand>>();
-            }
-        }
-    }
-
-    fn map_moved_commands(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
-        let mut world = world.write().expect("Failed to get write lock to world");
-        let sender = sender.lock().expect("Failed to lock sender");
-
-        debug!(
-            "Enqueuing packets from {:?} moved commands",
-            world
-                .resource_mut::<CommandContainer<MovedCommand>>()
-                .entries
-                .iter()
-                .map(|(_, queue)| queue.len())
-                .sum::<usize>()
-        );
-
-        let mut commands_to_process = Vec::new();
-        {
-            let mut command_container = world.resource_mut::<CommandContainer<MovedCommand>>();
-            for (key, queue) in command_container.entries.iter_mut() {
-                let cmds = queue.drain(..).collect::<Vec<MovedCommand>>();
-
-                queue.clear();
-
-                trace!(
-                    "Queue has been cleared for key: {:?}, new length: {:?}",
-                    key,
-                    queue.len()
-                );
-
-                trace!("Processing command: {:?}", (key, &cmds));
-                for cmd in cmds {
-                    commands_to_process.push(cmd);
-                }
-            }
-        }
-
-        for cmd in commands_to_process {
-            let packet = cmd.map_to_packet(&mut world);
-
-            trace!("Enqueuing packet: {:?}", packet);
-
-            let packet_data =
-                serde_json::to_string(&packet).expect("Failed to serialize MovedCommand");
-
-            sender.enqueue(SendPacket::new(packet_data, OpCode::Moved, None));
-        }
-    }
-
-    fn map_spawn_commands(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
-        let mut world = world.write().expect("Failed to get write lock to world");
-        let sender = sender.lock().expect("Failed to lock sender");
-
-        debug!(
-            "Enqueuing packets from {:?} spawn commands",
-            world
-                .resource_mut::<UntargetedCommandContainer<SpawnCommand>>()
-                .entries
-                .len()
-        );
-
-        // Also queue already existing packets
-
-        let networked_entities = world
-            .query::<(&Networked, &Position)>()
-            .iter(&world)
-            .map(|(networked, position)| SpawnPacket {
-                id: networked.id.clone(),
-                location: Vec3d::new(
-                    position.position.x,
-                    position.position.y,
-                    position.position.z,
-                ),
-            })
-            .collect::<Vec<SpawnPacket>>();
-
-        let commands: Vec<_> = world
-            .resource_mut::<UntargetedCommandContainer<SpawnCommand>>()
-            .entries
-            .drain(..)
-            .collect();
-
-        for command in commands {
-            trace!("Processing command: {:?}", command);
-
-            let packet = command.map_to_packet(&mut world);
-
-            trace!("Enqueuing packet: {:?}", packet);
-
-            let packet_data =
-                serde_json::to_string(&packet).expect("Failed to serialize SpawnCommand");
-
-            sender.enqueue(SendPacket::new(packet_data.clone(), OpCode::Spawn, None));
-
-            networked_entities
-                .iter()
-                .filter(|n| n.id != packet.id)
-                .for_each(|spawn| {
-                    sender.enqueue(SendPacket::new(
-                        serde_json::to_string(&spawn).expect("Failed to serialize SpawnPacket"),
-                        OpCode::Spawn,
-                        None,
-                    ));
-                });
-
-            let enown_packet = EnownPacket {
-                id: packet.id.clone(),
-            };
-
-            sender.enqueue(SendPacket::new(
-                serde_json::to_string(&enown_packet).expect("Failed to serialize SpawnCommand"),
-                OpCode::Enown,
-                command.owning_connection.clone(),
-            ));
-        }
-    }
-
     fn map_state(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
-        Self::map_move_commands(world.clone(), sender.clone());
-        Self::map_moved_commands(world.clone(), sender.clone());
-        Self::map_spawn_commands(world.clone(), sender);
-
-        let mut world = world.write().expect("Failed to get write lock to world");
-        let moved_command_container = world.resource_mut::<CommandContainer<MovedCommand>>();
-
-        debug!(
-            "map_state {:?} moved commands",
-            world
-                .resource_mut::<CommandContainer<MovedCommand>>()
-                .entries
-                .iter()
-                .map(|(_, queue)| queue.len())
-                .sum::<usize>()
-        );
+        MoveCommand::map(world.clone(), sender.clone());
+        MovedCommand::map(world.clone(), sender.clone());
+        SpawnCommand::map(world.clone(), sender.clone());
 
         trace!("Done enqueing packets");
     }

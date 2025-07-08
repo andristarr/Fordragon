@@ -1,13 +1,15 @@
 use bevy_ecs::world::World;
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 use crate::server::{
-    commands::MapableCommand,
+    commands::{MapableCommand, StateMappedCommand},
     components::{
         movement_state::MovementStateType, networked::Networked, position::Position,
         shared::vec3d::Vec3d,
     },
     protocols::send::moved_packet::MovedPacket,
+    systems::command_container::CommandContainer,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +41,34 @@ impl MapableCommand for MoveCommand {
         MovedPacket {
             networked_id: self.id.clone(),
             vector: Vec3d::new(current_position.x, current_position.y, current_position.z),
+        }
+    }
+}
+
+impl StateMappedCommand for MoveCommand {
+    fn map(
+        world: std::sync::Arc<std::sync::RwLock<World>>,
+        _sender: std::sync::Arc<
+            std::sync::Mutex<crate::server::packet_sender::packet_sender::ServerPacketSender>,
+        >,
+    ) {
+        let mut world = world.write().expect("Failed to get write lock to world");
+
+        debug!(
+            "Enqueuing packets from {:?} move commands",
+            world
+                .resource_mut::<CommandContainer<MoveCommand>>()
+                .entries
+                .iter()
+                .map(|(_, queue)| queue.len())
+                .sum::<usize>()
+        );
+
+        {
+            let mut command_container = world.resource_mut::<CommandContainer<MoveCommand>>();
+            for (_, queue) in command_container.entries.iter_mut() {
+                _ = queue.drain(..).collect::<Vec<MoveCommand>>();
+            }
         }
     }
 }

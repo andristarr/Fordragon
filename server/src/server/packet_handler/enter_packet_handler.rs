@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::server::{
     commands::spawn_command::{EntityComponent, SpawnCommand},
     components::movement_state::MovementStateType,
+    packet_sender::TargetAddress,
     packets::{packet::Packet, received_packet::ReceivedPacket},
     protocols::recv::enter_packet::EnterPacket,
     state::authorization_handler::AuthorizationHandlerTrait,
@@ -71,7 +72,7 @@ impl PacketHandlerTrait for EnterPacketHandler {
                     EntityComponent::Networked(character_id.to_string()),
                     EntityComponent::MovementState(MovementStateType::Stopped, 0.25),
                 ],
-                Some(packet.addr),
+                TargetAddress::Targeted(vec![packet.addr.clone()]),
             );
 
             trace!("Adding spawn command: {:?}", cmd);

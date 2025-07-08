@@ -8,7 +8,7 @@ use log::{debug, error, info, trace};
 use tokio::{io::Interest, net::UdpSocket};
 
 use crate::server::{
-    packet_sender::send_packet::SendPacket,
+    packet_sender::{send_packet::SendPacket, TargetAddress},
     packets::packet::Packet,
     state::{packet_id_generator::PacketIdGenerator, ticker::TickerTrait},
 };
@@ -74,7 +74,6 @@ impl PacketSender for ServerPacketSender {
             "Sending {:?} packet to {:?}",
             send_packet.opcode, send_packet.addr
         );
-        trace!("Sending packet data: {}", send_packet.packet_data);
 
         let mut state = self.state.lock().unwrap();
 
@@ -133,15 +132,22 @@ impl PacketSender for ServerPacketSender {
             let mut packets_by_addr: HashMap<SocketAddr, Vec<SendPacket>> = HashMap::new();
 
             for send_packet in packets.into_iter() {
-                if let Some(addr) = send_packet.addr {
-                    packets_by_addr.entry(addr).or_default().push(send_packet);
-                } else {
-                    // If no specific address, broadcast to all connections
-                    for addr in &connections {
-                        packets_by_addr
-                            .entry(*addr)
-                            .or_default()
-                            .push(send_packet.clone());
+                match &send_packet.addr {
+                    TargetAddress::Broadcast => {
+                        for addr in &connections {
+                            packets_by_addr
+                                .entry(*addr)
+                                .or_default()
+                                .push(send_packet.clone());
+                        }
+                    }
+                    TargetAddress::Targeted(socket_addrs) => {
+                        for addr in socket_addrs {
+                            packets_by_addr
+                                .entry(*addr)
+                                .or_default()
+                                .push(send_packet.clone());
+                        }
                     }
                 }
             }
@@ -261,7 +267,7 @@ mod tests {
         let data = "test".to_string();
         let opcode = OpCode::Spawn;
         let send_packet = SendPacket {
-            addr: None,
+            addr: TargetAddress::Broadcast,
             opcode,
             packet_data: data.clone(),
         };
@@ -284,12 +290,12 @@ mod tests {
         let data2 = "second".to_string();
         let opcode = OpCode::Spawn;
         let send_packet1 = SendPacket {
-            addr: None,
+            addr: TargetAddress::Broadcast,
             opcode,
             packet_data: data1.clone(),
         };
         let send_packet2 = SendPacket {
-            addr: None,
+            addr: TargetAddress::Broadcast,
             opcode,
             packet_data: data2.clone(),
         };

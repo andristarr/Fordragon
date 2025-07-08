@@ -9,7 +9,6 @@ use log::{debug, trace};
 
 use crate::server::{
     commands::move_command::MoveCommand,
-    components::{movement_state::MovementState, networked::Networked},
     packets::{packet::Packet, received_packet::ReceivedPacket},
     protocols::recv::move_packet::MovePacket,
     state::authorization_handler::AuthorizationHandlerTrait,

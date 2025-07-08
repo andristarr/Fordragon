@@ -3,7 +3,7 @@ use bevy_ecs::{
     query::With,
     system::{Query, ResMut},
 };
-use log::{debug, info, trace};
+use log::{debug, trace};
 
 use crate::server::{
     commands::moved_command::MovedCommand,

@@ -1,7 +1,9 @@
+use std::time::Instant;
+
 use bevy_ecs::{
     entity::Entity,
     query::With,
-    system::{Query, ResMut},
+    system::{Query, Res, ResMut},
 };
 use log::{debug, trace};
 
@@ -12,6 +14,7 @@ use crate::server::{
         networked::Networked,
         position::Position,
     },
+    systems::delta_time::DeltaTime,
 };
 
 use super::command_container::CommandContainer;
@@ -22,7 +25,14 @@ pub fn movement_system(
         (With<Position>, With<Networked>, With<MovementState>),
     >,
     mut moved_commands: ResMut<CommandContainer<MovedCommand>>,
+    delta_time: Res<DeltaTime>,
 ) {
+    let delta = delta_time.current();
+    let now = Instant::now();
+
+    // get the elapsed milliseconds since delta
+    let elapsed_secs = now.duration_since(delta).as_millis() as f64 / 1000.0;
+
     // TODO: Currently this does not handle invalidation of weird directions (eg, no collision detection)
     for (_, mut position, networked, movement_state) in query.iter_mut() {
         trace!(
@@ -35,9 +45,9 @@ pub fn movement_system(
             continue;
         }
 
-        position.position.x += movement_state.direction.x * movement_state.velocity;
-        position.position.y += movement_state.direction.y * movement_state.velocity;
-        position.position.z += movement_state.direction.z * movement_state.velocity;
+        position.position.x += movement_state.direction.x * movement_state.velocity * elapsed_secs;
+        position.position.y += movement_state.direction.y * movement_state.velocity * elapsed_secs;
+        position.position.z += movement_state.direction.z * movement_state.velocity * elapsed_secs;
 
         // Add to moved_commands or create a new one if it doesn't exist
         moved_commands

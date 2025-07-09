@@ -70,7 +70,7 @@ impl PacketHandlerTrait for EnterPacketHandler {
                 vec![
                     EntityComponent::Position(0.0, 0.0, 0.0),
                     EntityComponent::Networked(character_id.to_string()),
-                    EntityComponent::MovementState(MovementStateType::Stopped, 0.25),
+                    EntityComponent::MovementState(MovementStateType::Stopped, 1.00),
                 ],
                 TargetAddress::Targeted(vec![packet.addr.clone()]),
             );

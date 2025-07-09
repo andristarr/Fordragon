@@ -9,7 +9,7 @@ use crate::server::{
     },
     packet_sender::packet_sender::ServerPacketSender,
     systems::{
-        self, command_container::CommandContainer,
+        self, command_container::CommandContainer, delta_time::DeltaTime,
         untargeted_command_container::UntargetedCommandContainer,
     },
 };
@@ -64,6 +64,8 @@ impl ServerStateHandler {
             .insert_resource(UntargetedCommandContainer::<SpawnCommand> {
                 entries: Default::default(),
             });
+
+        world.write().unwrap().insert_resource(DeltaTime::default());
     }
 
     fn map_state(world: Arc<RwLock<World>>, sender: Arc<Mutex<ServerPacketSender>>) {
@@ -95,10 +97,13 @@ impl StateHandler for ServerStateHandler {
 
         let enter_world_system = systems::enter_world::enter_world_system;
 
+        let delta_time_system = systems::delta_time::update_delta_time;
+
         schedule.lock().unwrap().add_systems((
             enter_world_system,
             move_handling_system,
             movement_system,
+            delta_time_system,
         ));
 
         let shared_world = self.world.clone();
